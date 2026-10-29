@@ -516,6 +516,20 @@
         width: 100%;
         box-sizing: border-box;
     }
+
+    .complete-btn {
+        width: 100%;
+        min-height: 44px;
+    }
+
+    .panel,
+    .upload-card {
+        padding: 15px;
+    }
+
+    .upload-card input[type="file"] {
+        font-size: 14px;
+    }
 }
 </style>
 @endsection

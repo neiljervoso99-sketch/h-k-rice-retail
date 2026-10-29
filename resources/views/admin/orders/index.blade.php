@@ -123,7 +123,7 @@
                                     @endphp
 
                                     <span class="order-status {{ $statusClass }}">
-                                        {{ ucfirst($order->status ?? 'Unknown') }}
+                                        {{ $order->display_status }}
                                     </span>
                                 </td>
 
@@ -180,7 +180,32 @@
             </div>
 
             <div class="pagination-wrap">
-                {{ $orders->links() }}
+                @php
+                    $pageStart = max(1, $orders->currentPage() - 2);
+                    $pageEnd = min($orders->lastPage(), $orders->currentPage() + 2);
+                @endphp
+
+                <nav class="orders-pagination" aria-label="Customer order pages">
+                    @if ($orders->onFirstPage())
+                        <span class="pagination-link is-disabled" aria-disabled="true">Previous</span>
+                    @else
+                        <a class="pagination-link" href="{{ $orders->previousPageUrl() }}">Previous</a>
+                    @endif
+
+                    @foreach (range($pageStart, $pageEnd) as $page)
+                        @if ($page === $orders->currentPage())
+                            <span class="pagination-link is-current" aria-current="page">{{ $page }}</span>
+                        @else
+                            <a class="pagination-link" href="{{ $orders->url($page) }}">{{ $page }}</a>
+                        @endif
+                    @endforeach
+
+                    @if ($orders->hasMorePages())
+                        <a class="pagination-link" href="{{ $orders->nextPageUrl() }}">Next</a>
+                    @else
+                        <span class="pagination-link is-disabled" aria-disabled="true">Next</span>
+                    @endif
+                </nav>
             </div>
         @endif
     </div>
@@ -310,6 +335,46 @@
 
         .pagination-wrap {
             margin-top: 20px;
+        }
+
+        .orders-pagination {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .pagination-link {
+            display: inline-flex;
+            min-width: 38px;
+            min-height: 36px;
+            align-items: center;
+            justify-content: center;
+            padding: 7px 12px;
+            border: 1px solid #dfe6dc;
+            border-radius: 6px;
+            background: #fff;
+            color: #245333;
+            font-size: 13px;
+            line-height: 1;
+            text-decoration: none;
+        }
+
+        a.pagination-link:hover {
+            background: #e8f1e5;
+        }
+
+        .pagination-link.is-current {
+            border-color: #245333;
+            background: #245333;
+            color: #fff;
+            font-weight: 700;
+        }
+
+        .pagination-link.is-disabled {
+            color: #98a29a;
+            cursor: not-allowed;
         }
 
         .table-wrap {

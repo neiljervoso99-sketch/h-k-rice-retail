@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Rider;
 
 use App\Http\Controllers\Controller;
 use App\Models\Order;
+use App\Support\UserAlertNotifier;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -163,7 +164,18 @@ class OrderController extends Controller
 
         $order->status = 'completed';
         $order->completed_at = now();
+        $order->delivered_at = $order->completed_at;
         $order->save();
+
+        $order->loadMissing('customer');
+        if ($order->customer) {
+            UserAlertNotifier::send(
+                $order->customer,
+                'Delivery completed',
+                'Your order ' . $order->order_number . ' has been delivered.',
+                route('customer.orders.show', $order),
+            );
+        }
 
         return redirect()
             ->route('rider.orders.show', $order)

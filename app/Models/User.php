@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class User extends Authenticatable
 {
@@ -46,6 +47,11 @@ class User extends Authenticatable
         return $this->role === 'rider';
     }
 
+    public function isStaff(): bool
+    {
+        return $this->role === 'staff' && !$this->is_admin;
+    }
+
     public function isCustomer(): bool
     {
         return $this->role === 'customer' && !$this->is_admin;
@@ -64,5 +70,20 @@ class User extends Authenticatable
     public function assignedOrders(): HasMany
     {
         return $this->hasMany(Order::class, 'rider_id');
+    }
+
+    public function loginHistories(): HasMany
+    {
+        return $this->hasMany(LoginHistory::class);
+    }
+
+    public function activityLogs(): HasMany
+    {
+        return $this->hasMany(ActivityLog::class);
+    }
+
+    public function favoriteProducts(): BelongsToMany
+    {
+        return $this->belongsToMany(Product::class, 'favorites')->withTimestamps();
     }
 }

@@ -132,6 +132,7 @@ td{line-height:1.6}
 .notice.success{background:#e2f3e7;color:#176b35}
 .notice.error{background:#fde8e7;color:#922b25}
 .pagination{margin-top:18px}
-@media(max-width:700px){.rider-page{padding:14px}.stats-grid{grid-template-columns:1fr}.page-heading h1{font-size:23px}}
+@media(max-width:700px){.rider-page{padding:14px}.stats-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.stat-card{padding:14px}.stat-card strong{font-size:24px}.page-heading h1{font-size:23px}.table-wrap{-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain}.table-wrap table{min-width:850px}}
+@media(max-width:380px){.stats-grid{grid-template-columns:1fr}}
 </style>
 @endsection

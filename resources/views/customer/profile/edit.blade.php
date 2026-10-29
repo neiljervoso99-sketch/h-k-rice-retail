@@ -3,8 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
 
     <title>My Profile | H&K Consumer Goods Store</title>
+    @vite('resources/js/app.js')
 
     <style>
         * {
@@ -306,11 +308,31 @@
             .profile-dropdown {
                 width: 210px;
             }
+
+            input:not([type="checkbox"]):not([type="radio"]),
+            select,
+            textarea {
+                min-height: 44px;
+                font-size: 16px;
+            }
+
+            button,
+            .btn-primary,
+            .btn-secondary {
+                min-height: 44px;
+            }
+
+            .profile-dropdown {
+                max-width: calc(100vw - 28px);
+            }
         }
     </style>
 </head>
 
 <body>
+<div class="notification-floating">
+    @include('components.notification-center')
+</div>
 
 <header>
     <div class="header-inner">
@@ -463,5 +485,6 @@
     H&amp;K Consumer Goods Store — Quality goods for every home
 </footer>
 
+@include('components.smart-assistant')
 </body>
 </html>

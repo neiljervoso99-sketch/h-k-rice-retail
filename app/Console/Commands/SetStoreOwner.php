@@ -59,16 +59,16 @@ class SetStoreOwner extends Command
             return self::FAILURE;
         }
 
-        $password = $this->secret('Create a password (at least 12 characters)');
+        $password = $this->secret('Create a 6-digit password');
         $confirmation = $this->secret('Confirm password');
 
         if (
             !is_string($password) ||
-            strlen($password) < 12 ||
+            !preg_match('/^[0-9]{6}$/', $password) ||
             $password !== $confirmation
         ) {
             $this->error(
-                'Passwords must match and contain at least 12 characters. No account created.'
+                'Passwords must match and contain exactly 6 digits. No account created.'
             );
 
             return self::FAILURE;

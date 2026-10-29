@@ -5,12 +5,60 @@
 @section('content')
 <style>
     .store-dashboard {
-        --dashboard-green: #168653;
-        --dashboard-green-dark: #116b42;
+        --dashboard-green: #a855f7;
+        --dashboard-green-dark: #7c3aed;
+        --dashboard-green-soft: rgba(52, 211, 153, .13);
+        --dashboard-border: #293149;
+        --dashboard-muted: #9aa5bd;
+        --dashboard-shell: #0d1323;
+        --dashboard-heading-bg: #131b2e;
+        --dashboard-panel-bg: #131b2e;
+        --dashboard-kpi-bg: linear-gradient(145deg, #151e32, #11192a);
+        --dashboard-text: #ecf1ff;
+        --dashboard-heading-text: #f2f5ff;
+        --dashboard-kpi-label: #aab5cb;
+        --dashboard-kpi-value: #f1f5ff;
+        --dashboard-row-bg: #1a2439;
+        --dashboard-row-text: #d3dbed;
+        --dashboard-table-line: #252e43;
+        --dashboard-order-link: #c4b5fd;
+        --dashboard-status-text: #6ee7b7;
+        --dashboard-table-heading: #131b2e;
+        min-width: 0;
+        padding: 18px;
+        border: 1px solid #222b40;
+        border-radius: 18px;
+        background:
+            radial-gradient(ellipse at 82% 0%, rgba(86, 54, 150, .18), transparent 36%),
+            var(--dashboard-shell);
+        color: var(--dashboard-text);
+        box-shadow: 0 16px 38px rgba(13, 19, 35, .14);
+    }
+
+    :root[data-theme="light"] .store-dashboard {
+        --dashboard-green: #7c3aed;
+        --dashboard-green-dark: #6d28d9;
         --dashboard-green-soft: #e8f6ef;
-        --dashboard-border: #e5ece7;
+        --dashboard-border: #e2e8e4;
         --dashboard-muted: #748078;
-        color: #23332a;
+        --dashboard-shell: #f3f6f4;
+        --dashboard-heading-bg: #fff;
+        --dashboard-panel-bg: #fff;
+        --dashboard-kpi-bg: #fff;
+        --dashboard-text: #263b2b;
+        --dashboard-heading-text: #203d2c;
+        --dashboard-kpi-label: #53645a;
+        --dashboard-kpi-value: #1d2b22;
+        --dashboard-row-bg: #f7faf8;
+        --dashboard-row-text: #34443a;
+        --dashboard-table-line: #eef2ef;
+        --dashboard-order-link: #6d28d9;
+        --dashboard-status-text: #116b42;
+        --dashboard-table-heading: #fff;
+        border-color: #e5ece7;
+        background: var(--dashboard-shell);
+        color: var(--dashboard-text);
+        box-shadow: 0 8px 24px rgba(27, 55, 34, .08);
     }
 
     .store-dashboard * {
@@ -26,12 +74,12 @@
         margin-bottom: 16px;
         border: 1px solid var(--dashboard-border);
         border-radius: 12px;
-        background: #fff;
+        background: var(--dashboard-heading-bg);
     }
 
     .dashboard-heading h1 {
         margin: 0 0 4px;
-        color: #203d2c;
+        color: var(--dashboard-heading-text);
         font-size: 22px;
     }
 
@@ -47,10 +95,10 @@
         gap: 7px;
         flex-shrink: 0;
         padding: 7px 10px;
-        border: 1px solid #d5ebdd;
+        border: 1px solid rgba(52, 211, 153, .24);
         border-radius: 20px;
-        background: #f3fbf6;
-        color: var(--dashboard-green-dark);
+        background: rgba(16, 185, 129, .1);
+        color: #6ee7b7;
         font-size: 11px;
         font-weight: 700;
     }
@@ -59,8 +107,33 @@
         width: 7px;
         height: 7px;
         border-radius: 50%;
-        background: var(--dashboard-green);
+        background: #34d399;
         content: "";
+    }
+
+    .dashboard-heading-tools {
+        display: flex;
+        align-items: flex-end;
+        gap: 12px;
+        flex-shrink: 0;
+    }
+
+    .dashboard-clock {
+        color: var(--dashboard-muted);
+        text-align: right;
+    }
+
+    .dashboard-clock-label {
+        display: block;
+        font-size: 10px;
+    }
+
+    .dashboard-clock time {
+        display: block;
+        margin-top: 2px;
+        color: var(--dashboard-heading-text);
+        font-size: 13px;
+        font-weight: 700;
     }
 
     .dashboard-kpis {
@@ -75,12 +148,15 @@
         padding: 16px;
         border: 1px solid var(--dashboard-border);
         border-radius: 12px;
-        background: #fff;
+        background: var(--dashboard-kpi-bg);
+        box-shadow: 0 6px 16px rgba(0, 0, 0, .12);
     }
 
     .dashboard-kpi.primary {
-        border-color: var(--dashboard-green);
-        background: var(--dashboard-green);
+        border-color: rgba(192, 132, 252, .5);
+        background:
+            radial-gradient(ellipse at 100% 0%, rgba(192, 132, 252, .3), transparent 48%),
+            linear-gradient(135deg, #582d91, #39245f);
         color: #fff;
     }
 
@@ -90,19 +166,19 @@
         justify-content: space-between;
         gap: 8px;
         margin-bottom: 12px;
-        color: #53645a;
+        color: var(--dashboard-kpi-label);
         font-size: 12px;
         font-weight: 600;
     }
 
     .dashboard-kpi.primary .dashboard-kpi-label {
-        color: #e9fff2;
+        color: #f3e8ff;
     }
 
     .dashboard-kpi-value {
         display: block;
         overflow-wrap: anywhere;
-        color: #1d2b22;
+        color: var(--dashboard-kpi-value);
         font-size: clamp(20px, 2vw, 26px);
         font-weight: 800;
         line-height: 1.2;
@@ -120,7 +196,7 @@
     }
 
     .dashboard-kpi.primary .dashboard-kpi-note {
-        color: #ddf5e6;
+        color: #e9d5ff;
     }
 
     .dashboard-grid {
@@ -136,7 +212,7 @@
         padding: 16px;
         border: 1px solid var(--dashboard-border);
         border-radius: 12px;
-        background: #fff;
+        background: var(--dashboard-panel-bg);
     }
 
     .dashboard-panel-heading {
@@ -149,7 +225,7 @@
 
     .dashboard-panel-heading h2 {
         margin: 0;
-        color: #233d2c;
+        color: var(--dashboard-heading-text);
         font-size: 15px;
     }
 
@@ -183,7 +259,7 @@
         justify-content: space-between;
         gap: 8px;
         min-width: 0;
-        color: #4a5b50;
+        color: var(--dashboard-muted);
         font-size: 11px;
     }
 
@@ -194,7 +270,7 @@
     }
 
     .category-legend-item strong {
-        color: #253b2d;
+        color: var(--dashboard-heading-text);
         white-space: nowrap;
     }
 
@@ -218,12 +294,12 @@
         gap: 12px;
         padding: 10px;
         border-radius: 8px;
-        background: #f7faf8;
+        background: var(--dashboard-row-bg);
     }
 
     .top-product-name {
         min-width: 0;
-        color: #263a2d;
+        color: var(--dashboard-heading-text);
         font-size: 12px;
         font-weight: 700;
         overflow-wrap: anywhere;
@@ -239,7 +315,7 @@
 
     .top-product-sales {
         flex-shrink: 0;
-        color: #244b34;
+        color: var(--dashboard-green-dark);
         font-size: 12px;
         font-weight: 700;
     }
@@ -257,7 +333,7 @@
     .dashboard-orders th {
         padding: 9px 8px;
         border-bottom: 1px solid var(--dashboard-border);
-        background: #fff;
+        background: var(--dashboard-table-heading);
         color: var(--dashboard-muted);
         font-size: 10px;
         font-weight: 700;
@@ -267,8 +343,8 @@
 
     .dashboard-orders td {
         padding: 10px 8px;
-        border-bottom: 1px solid #eef2ef;
-        color: #34443a;
+        border-bottom: 1px solid var(--dashboard-table-line);
+        color: var(--dashboard-row-text);
         font-size: 11px;
         vertical-align: middle;
     }
@@ -278,7 +354,7 @@
     }
 
     .dashboard-order-number {
-        color: #234b34;
+        color: var(--dashboard-order-link);
         font-weight: 700;
     }
 
@@ -287,7 +363,7 @@
         padding: 4px 8px;
         border-radius: 20px;
         background: var(--dashboard-green-soft);
-        color: var(--dashboard-green-dark);
+        color: var(--dashboard-status-text);
         font-size: 10px;
         font-weight: 700;
         white-space: nowrap;
@@ -295,13 +371,13 @@
 
     .dashboard-status.pending,
     .dashboard-status.accepted {
-        background: #f0f7f2;
-        color: #3b654a;
+        background: rgba(251, 191, 36, .12);
+        color: #fcd34d;
     }
 
     .dashboard-status.cancelled {
-        background: #f2f5f3;
-        color: #627067;
+        background: rgba(248, 113, 113, .12);
+        color: #fca5a5;
     }
 
     .dashboard-actions {
@@ -317,18 +393,19 @@
         justify-content: center;
         min-height: 36px;
         padding: 8px 12px;
-        border: 1px solid var(--dashboard-green);
+        border: 1px solid #245333;
         border-radius: 6px;
-        background: var(--dashboard-green);
+        background: #245333;
         color: #fff;
         font-size: 11px;
         font-weight: 700;
         text-decoration: none;
     }
 
-    .dashboard-action-button:hover {
-        border-color: var(--dashboard-green-dark);
-        background: var(--dashboard-green-dark);
+    .dashboard-action-button:hover,
+    .dashboard-action-button:focus-visible {
+        border-color: #193d25;
+        background: #193d25;
         color: #fff;
     }
 
@@ -350,7 +427,7 @@
         padding: 11px;
         border: 1px solid var(--dashboard-border);
         border-radius: 8px;
-        background: #fff;
+        background: #151e31;
     }
 
     .dashboard-status-count span {
@@ -362,7 +439,7 @@
     .dashboard-status-count strong {
         display: block;
         margin-top: 4px;
-        color: #264333;
+        color: #f0f4ff;
         font-size: 17px;
     }
 
@@ -388,6 +465,11 @@
     }
 
     @media (max-width: 520px) {
+        .store-dashboard {
+            padding: 10px;
+            border-radius: 14px;
+        }
+
         .dashboard-heading {
             align-items: flex-start;
             padding: 14px;
@@ -400,6 +482,20 @@
         .dashboard-live {
             padding: 6px 8px;
             font-size: 10px;
+        }
+
+        .dashboard-heading-tools {
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 6px;
+        }
+
+        .dashboard-clock-label {
+            font-size: 9px;
+        }
+
+        .dashboard-clock time {
+            font-size: 11px;
         }
 
         .dashboard-kpis {
@@ -421,6 +517,14 @@
         .dashboard-status-summary {
             grid-template-columns: repeat(2, minmax(0, 1fr));
         }
+
+        .dashboard-chart {
+            height: 205px;
+        }
+
+        .dashboard-panel {
+            padding: 13px;
+        }
     }
 </style>
 
@@ -428,17 +532,34 @@
     <header class="dashboard-heading">
         <div>
             <h1>Dashboard Overview</h1>
-            <p>Welcome back! Here is your store's live performance view.</p>
+            <p>
+                @if (auth()->user()->isAdmin())
+                    Store analytics, performance, and recent activity at a glance.
+                @else
+                    Operational overview, product activity, and low-stock alerts.
+                @endif
+            </p>
         </div>
-        <span class="dashboard-live">Live data</span>
+        <div class="dashboard-heading-tools">
+            <div class="dashboard-clock">
+                <span class="dashboard-clock-label">Philippine time · Asia/Manila</span>
+                <time
+                    id="manila-clock"
+                    datetime="{{ now('Asia/Manila')->toIso8601String() }}"
+                >{{ now('Asia/Manila')->format('M d, Y · g:i:s A') }}</time>
+            </div>
+            <span class="dashboard-live">Live data</span>
+        </div>
     </header>
 
     <section class="dashboard-kpis" aria-label="Store overview">
-        <article class="dashboard-kpi primary">
-            <span class="dashboard-kpi-label">Revenue this month</span>
-            <strong class="dashboard-kpi-value">₱{{ number_format((float) $monthSales, 2) }}</strong>
-            <span class="dashboard-kpi-note">₱{{ number_format((float) $todaySales, 2) }} completed today</span>
-        </article>
+        @if (auth()->user()->isAdmin())
+            <article class="dashboard-kpi primary">
+                <span class="dashboard-kpi-label">Revenue this month</span>
+                <strong class="dashboard-kpi-value">₱{{ number_format((float) $monthSales, 2) }}</strong>
+                <span class="dashboard-kpi-note">₱{{ number_format((float) $weekSales, 2) }} this week · ₱{{ number_format((float) $todaySales, 2) }} today</span>
+            </article>
+        @endif
         <article class="dashboard-kpi">
             <span class="dashboard-kpi-label">Orders this month</span>
             <strong class="dashboard-kpi-value">{{ number_format($ordersThisMonth) }}</strong>
@@ -456,6 +577,7 @@
         </article>
     </section>
 
+    @if (auth()->user()->isAdmin())
     <section class="dashboard-grid">
         <article class="dashboard-panel">
             <div class="dashboard-panel-heading">
@@ -489,6 +611,7 @@
             @endif
         </article>
     </section>
+    @endif
 
     <section class="dashboard-lower-grid">
         <article class="dashboard-panel">
@@ -504,7 +627,9 @@
                                 {{ $product->product_name }}
                                 <span class="top-product-quantity">{{ number_format((float) $product->quantity_sold, 0) }} sold</span>
                             </div>
-                            <span class="top-product-sales">₱{{ number_format((float) $product->sales_total, 2) }}</span>
+                            @if (auth()->user()->isAdmin())
+                                <span class="top-product-sales">₱{{ number_format((float) $product->sales_total, 2) }}</span>
+                            @endif
                         </div>
                     @endforeach
                 </div>
@@ -513,6 +638,7 @@
             @endif
         </article>
 
+        @if (auth()->user()->isAdmin())
         <article class="dashboard-panel">
             <div class="dashboard-panel-heading">
                 <h2>Recent Orders</h2>
@@ -551,15 +677,22 @@
                 <div class="dashboard-empty">No orders have been placed yet.</div>
             @endif
         </article>
+        @endif
     </section>
 
-    <nav class="dashboard-actions" aria-label="Dashboard shortcuts">
-        <a class="dashboard-action-button" href="{{ route('admin.orders.index') }}">Manage Orders</a>
-        <a class="dashboard-action-button" href="{{ route('admin.inventory.index') }}">Inventory</a>
-        <a class="dashboard-action-button" href="{{ route('admin.products.index') }}">Products</a>
-        <a class="dashboard-action-button" href="{{ route('admin.reports.index') }}">Reports</a>
-        <a class="dashboard-action-button" href="{{ route('admin.expenses.index') }}">Expenses</a>
-    </nav>
+    @if (auth()->user()->isAdmin())
+        <nav class="dashboard-actions" aria-label="Dashboard shortcuts">
+            <a class="dashboard-action-button" href="{{ route('admin.orders.index') }}">Manage Orders</a>
+            <a class="dashboard-action-button" href="{{ route('admin.inventory.index') }}">Inventory</a>
+            <a class="dashboard-action-button" href="{{ route('admin.products.index') }}">Products</a>
+            <a class="dashboard-action-button" href="{{ route('admin.reports.index') }}">Reports</a>
+            <a class="dashboard-action-button" href="{{ route('admin.expenses.index') }}">Expenses</a>
+        </nav>
+    @else
+        <nav class="dashboard-actions" aria-label="Dashboard shortcuts">
+            <a class="dashboard-action-button" href="{{ route('admin.manual-transactions.index') }}">Manual Transactions</a>
+        </nav>
+    @endif
 
     <section class="dashboard-status-summary" aria-label="Order status totals">
         <div class="dashboard-status-count"><span>Pending</span><strong>{{ number_format($pendingOrders) }}</strong></div>
@@ -571,7 +704,9 @@
     <section class="dashboard-panel">
         <div class="dashboard-panel-heading">
             <h2>Low Stock Alerts</h2>
-            <a class="dashboard-action-button" href="{{ route('admin.inventory.index') }}">Open inventory</a>
+            @if (auth()->user()->isAdmin())
+                <a class="dashboard-action-button" href="{{ route('admin.inventory.index') }}">Open inventory</a>
+            @endif
         </div>
         @if ($lowStockProducts->isNotEmpty())
             <div class="dashboard-orders-wrap">
@@ -606,28 +741,66 @@
     </section>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+@if (auth()->user()->isAdmin())
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+@endif
 <script>
     document.addEventListener('DOMContentLoaded', function () {
+        const manilaClock = document.getElementById('manila-clock');
+        if (manilaClock) {
+            const dateFormatter = new Intl.DateTimeFormat('en-PH', {
+                timeZone: 'Asia/Manila',
+                year: 'numeric',
+                month: 'short',
+                day: '2-digit'
+            });
+            const timeFormatter = new Intl.DateTimeFormat('en-PH', {
+                timeZone: 'Asia/Manila',
+                hour: 'numeric',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: true
+            });
+            const updateManilaClock = function () {
+                const currentTime = new Date();
+                manilaClock.dateTime = currentTime.toISOString();
+                manilaClock.textContent = dateFormatter.format(currentTime)
+                    + ' · ' + timeFormatter.format(currentTime);
+            };
+
+            updateManilaClock();
+            window.setInterval(updateManilaClock, 1000);
+        }
+
+        @if (auth()->user()->isAdmin())
         if (typeof Chart === 'undefined') {
             return;
         }
 
+        const charts = [];
+        const isDarkTheme = function () {
+            return document.documentElement.dataset.theme === 'dark';
+        };
+
         const salesCanvas = document.getElementById('salesTrendsChart');
         if (salesCanvas) {
-            new Chart(salesCanvas, {
+            const salesChart = new Chart(salesCanvas, {
                 type: 'line',
                 data: {
                     labels: @json($salesChartLabels),
                     datasets: [{
                         label: 'Sales (₱)',
                         data: @json($salesChartData),
-                        borderColor: '#168653',
-                        backgroundColor: 'rgba(22, 134, 83, .12)',
+                        borderColor: isDarkTheme() ? '#c084fc' : '#7c3aed',
+                        backgroundColor: isDarkTheme()
+                            ? 'rgba(168, 85, 247, .18)'
+                            : 'rgba(124, 58, 237, .12)',
                         fill: true,
                         tension: .38,
                         pointRadius: 3,
-                        pointHoverRadius: 5
+                        pointHoverRadius: 5,
+                        pointBackgroundColor: isDarkTheme() ? '#67e8f9' : '#7c3aed',
+                        pointBorderColor: isDarkTheme() ? '#131b2e' : '#fff'
                     }]
                 },
                 options: {
@@ -647,11 +820,19 @@
                         }
                     },
                     scales: {
-                        x: { grid: { display: false } },
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: isDarkTheme() ? '#9aa5bd' : '#748078' }
+                        },
                         y: {
                             beginAtZero: true,
-                            grid: { color: '#edf2ee' },
+                            grid: {
+                                color: isDarkTheme()
+                                    ? 'rgba(154, 165, 189, .14)'
+                                    : 'rgba(116, 128, 120, .18)'
+                            },
                             ticks: {
+                                color: isDarkTheme() ? '#9aa5bd' : '#748078',
                                 callback: function (value) {
                                     return '₱' + Number(value).toLocaleString('en-PH');
                                 }
@@ -660,19 +841,20 @@
                     }
                 }
             });
+            charts.push(salesChart);
         }
 
         const categoryCanvas = document.getElementById('categorySalesChart');
         if (categoryCanvas) {
-            new Chart(categoryCanvas, {
+            const categoryChart = new Chart(categoryCanvas, {
                 type: 'doughnut',
                 data: {
                     labels: @json($salesByCategory->pluck('category')->values()),
                     datasets: [{
                         data: @json($salesByCategory->pluck('total')->map(fn ($total) => (float) $total)->values()),
-                        backgroundColor: ['#168653', '#42a878', '#72c49a', '#a2dabc', '#c4e9d3', '#dcefe3'],
+                        backgroundColor: ['#c084fc', '#22d3ee', '#818cf8', '#34d399', '#f472b6', '#fbbf24'],
                         borderWidth: 3,
-                        borderColor: '#fff',
+                        borderColor: isDarkTheme() ? '#131b2e' : '#fff',
                         hoverOffset: 4
                     }]
                 },
@@ -695,7 +877,40 @@
                     }
                 }
             });
+            charts.push(categoryChart);
         }
+
+        document.addEventListener('admin-theme-change', function (event) {
+            const isDark = event.detail.theme === 'dark';
+
+            charts.forEach(function (chart) {
+                if (chart.config.type === 'line') {
+                    chart.data.datasets[0].backgroundColor = isDark
+                        ? 'rgba(168, 85, 247, .18)'
+                        : 'rgba(124, 58, 237, .12)';
+                    chart.data.datasets[0].pointBackgroundColor = isDark
+                        ? '#67e8f9'
+                        : '#7c3aed';
+                    chart.data.datasets[0].pointBorderColor = isDark
+                        ? '#131b2e'
+                        : '#fff';
+                    chart.options.scales.x.ticks.color = isDark
+                        ? '#9aa5bd'
+                        : '#748078';
+                    chart.options.scales.y.ticks.color = isDark
+                        ? '#9aa5bd'
+                        : '#748078';
+                    chart.options.scales.y.grid.color = isDark
+                        ? 'rgba(154, 165, 189, .14)'
+                        : 'rgba(116, 128, 120, .18)';
+                } else {
+                    chart.data.datasets[0].borderColor = isDark ? '#131b2e' : '#fff';
+                }
+
+                chart.update();
+            });
+        });
+        @endif
     });
 
     window.setTimeout(function () {

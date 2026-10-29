@@ -5,6 +5,7 @@
     
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Order Confirmation | H&amp;K Consumer Goods Store</title>
      <link rel="icon" type="image/png" href="{{ asset('images/HK_Consumer_Goods_Store_logo.png') }}?v=2">
 
@@ -56,11 +57,22 @@
             font-weight: bold;
         }
         @media (max-width: 520px) {
+            header, footer { padding: 14px 0; }
+            main { padding: 22px 0 36px; }
+            .panel { padding: 16px; }
             .row { flex-direction: column; gap: 2px; }
+            .btn { display: flex; justify-content: center; min-height: 44px; }
+            h1 { font-size: 25px; }
         }
     </style>
+    @vite('resources/js/app.js')
 </head>
 <body>
+@auth
+    <div class="notification-floating">
+        @include('components.notification-center')
+    </div>
+@endauth
 <header>
     <div class="container"><strong>H&amp;K Consumer Goods Store</strong></div>
 </header>
@@ -83,7 +95,7 @@
         </div>
         <div class="row">
             <span>Order status</span>
-            <strong>{{ ucfirst($order->status) }}</strong>
+            <strong>{{ $order->display_status }}</strong>
         </div>
         <div class="row">
             <span>Payment status</span>
@@ -181,5 +193,6 @@
 <footer>
     <div class="container">H&amp;K Consumer Goods Store</div>
 </footer>
+@include('components.smart-assistant')
 </body>
 </html>

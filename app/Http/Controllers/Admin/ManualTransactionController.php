@@ -10,6 +10,7 @@ use App\Models\Payment;
 use App\Models\Product;
 use App\Models\ProductSellingUnit;
 use App\Models\User;
+use App\Support\LowStockAlertNotifier;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -430,6 +431,8 @@ class ManualTransactionController extends Controller
                 'admin_notes' => 'Manual transaction recorded by admin.',
                 'accepted_at' => $now,
                 'completed_at' => $now,
+                'processing_at' => $now,
+                'delivered_at' => $now,
                 'inventory_deducted_at' => $now,
             ]);
 
@@ -519,6 +522,17 @@ class ManualTransactionController extends Controller
 
             return $order;
         }, 3);
+
+        $order->items()
+            ->whereNotNull('product_id')
+            ->pluck('product_id')
+            ->unique()
+            ->each(function ($productId) {
+                $product = Product::find($productId);
+                if ($product) {
+                    LowStockAlertNotifier::check($product);
+                }
+            });
 
         return redirect()
             ->route('admin.manual-transactions.receipt', $order)

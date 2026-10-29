@@ -6,6 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>@yield('title', 'Rider Dashboard') | H&amp;K Consumer Goods Store</title>
     <link rel="icon" type="image/png" href="{{ asset('images/HK_Consumer_Goods_Store_logo.png') }}">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    @vite('resources/js/app.js')
 
     <style>
         :root {
@@ -249,6 +251,32 @@
             .profile-dropdown { width: 220px; }
 
             .rider-main { padding: 90px 12px 22px; }
+
+            body {
+                overflow-x: hidden;
+            }
+
+            .rider-main {
+                padding-bottom: calc(24px + env(safe-area-inset-bottom));
+            }
+
+            .rider-main input,
+            .rider-main select,
+            .rider-main textarea {
+                min-height: 44px;
+                font-size: 16px;
+            }
+
+            .rider-main button,
+            .rider-main .btn,
+            .rider-main a {
+                touch-action: manipulation;
+            }
+
+            .rider-main img,
+            .rider-main table {
+                max-width: 100%;
+            }
         }
     </style>
 
@@ -287,6 +315,8 @@
                 <p class="brand-subtitle">Business Management System</p>
             </div>
         </div>
+
+        @include('components.notification-center')
 
         <div class="profile-container">
             <button

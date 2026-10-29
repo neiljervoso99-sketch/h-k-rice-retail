@@ -42,7 +42,7 @@
     <hr>
 
     <p><strong>Order Number:</strong> {{ $order->order_number }}</p>
-    <p><strong>Status:</strong> {{ ucfirst($order->status) }}</p>
+    <p><strong>Status:</strong> {{ $order->display_status }}</p>
     <p><strong>Total:</strong> ₱{{ number_format((float) $order->total, 2) }}</p>
 
     <p>Please sign in to your H&K Consumer Goods Store account to view your order details.</p>

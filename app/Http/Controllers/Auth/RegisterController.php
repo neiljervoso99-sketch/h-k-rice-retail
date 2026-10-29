@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Validation\Rules\Password;
 
 class RegisterController extends Controller
 {
@@ -14,7 +13,9 @@ class RegisterController extends Controller
     {
         if (Auth::check()) {
             return redirect()->route(
-                Auth::user()->is_admin ? 'admin.dashboard' : 'home'
+                Auth::user()->isAdmin() || Auth::user()->isStaff()
+                    ? 'admin.dashboard'
+                    : (Auth::user()->isRider() ? 'rider.dashboard' : 'home')
             );
         }
 
@@ -35,7 +36,7 @@ class RegisterController extends Controller
             'password' => [
                 'required',
                 'confirmed',
-                Password::min(12),
+                'regex:/^[0-9]{6}$/',
             ],
         ]);
 

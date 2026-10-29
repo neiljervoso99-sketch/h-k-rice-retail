@@ -4,7 +4,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>My Orders | H&K Consumer Goods Store</title>
+    @vite('resources/js/app.js')
 
     <style>
         * { box-sizing: border-box; }
@@ -79,10 +81,16 @@
         @media (max-width: 600px) {
             body { padding: 14px; }
             .order-card { padding: 16px; }
+            .topbar { align-items: flex-start; }
+            .button { min-height: 44px; }
+            .order-footer { align-items: stretch; }
         }
     </style>
 </head>
 <body>
+<div class="notification-floating">
+    @include('components.notification-center')
+</div>
 <div class="container">
     <div class="topbar">
         <div>
@@ -155,5 +163,6 @@
 
     {{ $orders->links() }}
 </div>
+@include('components.smart-assistant')
 </body>
 </html>

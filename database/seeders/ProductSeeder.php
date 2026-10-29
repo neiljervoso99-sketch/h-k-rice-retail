@@ -11,7 +11,7 @@ class ProductSeeder extends Seeder
     {
         $products = [
             [
-                'name' => 'Magdalo / Magdalenang Local',
+                'name' => 'Magdalena Local Rice',
                 'rice_type' => 'Local Rice',
                 'price_per_kg' => 50,
                 'price_per_sack' => 2400,

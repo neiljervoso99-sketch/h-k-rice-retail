@@ -7,6 +7,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>H&amp;K Consumer Goods Store</title>
     <link rel="icon" type="image/png" href="{{ asset('images/HK_Consumer_Goods_Store_logo.png') }}?v=2">
+    @vite('resources/js/app.js')
 
     <style>
         :root {
@@ -444,6 +445,35 @@
             font-weight: bold;
         }
 
+        .favorites-link {
+            display: inline-flex;
+            align-items: center;
+            min-height: 38px;
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: #fff;
+            color: var(--dark);
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .favorite-form { margin-top: 10px; }
+        .favorite-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            min-height: 38px;
+            padding: 8px 11px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: #fff;
+            color: var(--dark);
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .favorite-button[aria-pressed="true"] { color: #a52b2b; }
+
         .filters {
             display: grid;
             grid-template-columns:
@@ -809,6 +839,10 @@
         @media (max-width: 600px) {
             .container { width: 92%; }
 
+            body {
+                overflow-x: hidden;
+            }
+
             .nav {
                 align-items: flex-start;
                 flex-direction: column;
@@ -818,18 +852,36 @@
             .brand-logo { width: 46px; height: 46px; }
             .brand-name { font-size: 16px; }
             .brand-caption { font-size: 10px; }
-            .nav-actions { width: 100%; gap: 12px; }
+            .nav-actions {
+                width: 100%;
+                justify-content: flex-start;
+                gap: 10px 14px;
+            }
+            .nav-actions > a,
+            .nav-actions .admin-profile-header {
+                min-height: 44px;
+            }
             .admin-profile-identity strong { max-width: 120px; }
             .contact-details { grid-template-columns: 1fr; gap: 14px; }
             .hero { padding-top: 10px; }
             .hero-banner-wrap { border-radius: 10px; }
+            .hero-order-btn {
+                min-height: 40px;
+                padding: 9px 14px;
+                font-size: 12px;
+            }
 
             .benefits { grid-template-columns: 1fr; gap: 8px; }
             .benefit { padding: 10px 12px; }
             .benefit-icon { width: 36px; height: 36px; }
             main { padding-top: 22px; }
-            .section-heading { align-items: flex-start; }
+            .section-heading {
+                align-items: flex-start;
+                flex-direction: column;
+                gap: 8px;
+            }
             .section-heading h2 { font-size: 25px; }
+            .count { align-self: flex-start; }
 
             .filters {
                 grid-template-columns: 1fr;
@@ -839,16 +891,26 @@
             .filters .btn,
             .filters .field,
             .filters .reset-link { width: 100%; }
+            .filters .field,
+            .filters .reset-link {
+                min-height: 44px;
+                font-size: 16px;
+            }
+            .filters .reset-link {
+                justify-content: center;
+                border: 1px solid var(--border);
+                border-radius: 8px;
+            }
 
             .product-grid { grid-template-columns: 1fr; gap: 14px; }
 
             .product-card {
                 display: grid;
-                grid-template-columns: 115px minmax(0, 1fr);
+                grid-template-columns: 1fr;
             }
 
-            .product-visual { height: 100%; min-height: 180px; }
-            .product-body { padding: 12px; }
+            .product-visual { height: 180px; min-height: 180px; }
+            .product-body { padding: 15px; }
             .product-body h3 { font-size: 15px; }
             .product-description { font-size: 11px; }
             .price-row { font-size: 11px; }
@@ -860,13 +922,23 @@
                 gap: 4px;
             }
 
-            .quantity-button { min-height: 38px; }
-            .quantity-control .field { min-height: 38px; padding: 6px 3px; }
+            .quantity-button { min-height: 44px; }
+            .quantity-control .field {
+                min-height: 44px;
+                padding: 6px 3px;
+                font-size: 16px;
+            }
+
+            .add-cart-panel .btn { min-height: 46px; }
+            .empty .btn { max-width: 100%; }
         }
 
         @media (max-width: 370px) {
             .product-card { grid-template-columns: 1fr; }
             .product-visual { height: 170px; min-height: 170px; }
+            .nav-actions > * { min-height: 42px; }
+            .product-card button,
+            .product-card .btn { min-height: 44px; }
         }
     </style>
 </head>
@@ -892,6 +964,8 @@
                 <a class="nav-link" href="{{ route('login') }}">Log In</a>
                 <a class="btn-outline" href="{{ route('register') }}">Sign Up</a>
             @else
+                @include('components.notification-center')
+
                 @if (auth()->user()->isAdmin())
                     <a class="nav-link" href="{{ route('admin.dashboard') }}">
                         Owner Dashboard
@@ -1018,7 +1092,7 @@
 
     <div class="section-heading">
         <div>
-            <h2>Our Rice Selection</h2>
+            <h2>Our Products</h2>
             <p>Search and filter our products instantly.</p>
         </div>
 
@@ -1026,6 +1100,10 @@
             {{ $products->count() }}
             {{ $products->count() === 1 ? 'product' : 'products' }}
         </span>
+        @if (auth()->check() && auth()->user()->isCustomer())
+            <a class="favorites-link" href="{{ route('customer.favorites.index') }}">Favorites</a>
+        @endif
+        <a class="favorites-link" href="{{ route('bundles.index') }}">Bundle Packs</a>
     </div>
 
     <form class="filters" id="product-filters" method="GET" action="{{ route('home') }}">
@@ -1034,16 +1112,16 @@
                type="search"
                name="search"
                value="{{ request('search') }}"
-               placeholder="Search rice, brand, or type..."
+               placeholder="Search products, brand, or type..."
                aria-label="Search products"
                maxlength="100"
                autocomplete="off">
 
-        <select class="field" id="rice-type-filter" name="type" aria-label="Filter by rice type">
-            <option value="">All rice types</option>
-            @foreach ($riceTypes as $riceType)
-                <option value="{{ $riceType }}" @selected(request('type') === $riceType)>
-                    {{ $riceType }}
+        <select class="field" id="rice-type-filter" name="type" aria-label="Filter by product type">
+            <option value="">All product types</option>
+            @foreach ($productTypes as $productType)
+                <option value="{{ $productType }}" @selected(request('type') === $productType)>
+                    {{ $productType }}
                 </option>
             @endforeach
         </select>
@@ -1064,9 +1142,13 @@
     <div class="product-grid" id="product-grid">
         @foreach ($products as $product)
             @php
+                $isGenericProduct = ($product->inventory_type ?? 'rice') === 'generic';
                 $productName = strtolower(trim($product->name ?? ''));
                 $productBrand = strtolower(trim($product->brand ?? ''));
-                $searchableText = $productName . ' ' . $productBrand . ' ' . strtolower(trim($product->rice_type ?? ''));
+                $searchableText = $productName . ' ' . $productBrand . ' ' . strtolower(trim($product->rice_type ?? '')) . ' ' . strtolower(trim($product->category ?? ''));
+                $productType = $isGenericProduct
+                    ? ($product->category ?: 'General product')
+                    : ($product->rice_type ?: 'Rice');
 
                 // Use the uploaded product image first.
                 $uploadedImageUrl = !empty($product->image)
@@ -1081,8 +1163,6 @@
                     'carlos uno local' => 'carlos uno local.jpg',
                     'jasmine 10 kg' => 'Jasmine 10 kg.jpg',
                     'jasmine 5 kg' => 'Jasmine 5 kg.jpg',
-                    'magdalo magdalenang local' => 'magdalo magdalenang local.jpg',
-                    'magdalo magdalena local' => 'magdalo magdalenang local.jpg',
                     'marina' => 'marina.jpg',
                     'red rice' => 'Red Rice 50 kg.jpg',
                     'senior roberto' => 'Senior Roberto 50 kg.png',
@@ -1103,27 +1183,59 @@
 
                 $mappedImageExists = $imagePath && file_exists($imagePath);
 
-                $hasKgPrice = (bool) $product->price_confirmed
+                $hasKgPrice = !$isGenericProduct
+                    && (bool) $product->price_confirmed
                     && $product->price_per_kg !== null
                     && (float) $product->price_per_kg > 0;
 
-                $hasSackPrice = (bool) $product->price_confirmed
+                $hasSackPrice = !$isGenericProduct
+                    && (bool) $product->price_confirmed
                     && $product->price_per_sack !== null
                     && (float) $product->price_per_sack > 0
                     && (float) $product->sack_weight_kg >= 5;
 
-                $stock = (float) ($product->stock_kg ?? 0);
-                $lowThreshold = (float) ($product->low_stock_threshold ?? 5);
+                $genericSellingUnits = $isGenericProduct
+                    ? $product->sellingUnits->filter(fn ($unit) =>
+                        (bool) $product->price_confirmed
+                        && (float) $unit->selling_price > 0
+                    )->values()
+                    : collect();
+                $genericBaseUnit = strtolower(trim(
+                    (string) ($product->base_unit ?: $product->stock_unit ?: 'piece')
+                ));
+                $stock = (float) ($isGenericProduct
+                    ? ($product->stock_base_quantity ?? 0)
+                    : ($product->stock_kg ?? 0));
+                $lowThreshold = (float) ($isGenericProduct
+                    ? ($product->low_stock_threshold_quantity ?? 0)
+                    : ($product->low_stock_threshold ?? 5));
                 $sackWeight = (float) ($product->sack_weight_kg ?? 0);
-                $stockSacks = $sackWeight > 0 ? $stock / $sackWeight : null;
-                $canAddToCart = $stock > 0 && ($hasKgPrice || $hasSackPrice);
+                $stockSacks = !$isGenericProduct && $sackWeight > 0
+                    ? $stock / $sackWeight
+                    : null;
+                $stockUnitLabel = $isGenericProduct
+                    ? \Illuminate\Support\Str::plural($genericBaseUnit, $stock)
+                    : 'kg';
+                $genericBaseSellingUnit = $genericSellingUnits->first(
+                    fn ($unit) => strtolower($unit->unit_name) === $genericBaseUnit
+                );
+                $sortPrice = $isGenericProduct
+                    ? ($genericBaseSellingUnit
+                        ? (float) $genericBaseSellingUnit->selling_price
+                        : null)
+                    : ($hasKgPrice ? (float) $product->price_per_kg : null);
+                $canAddToCart = $stock > 0 && (
+                    $isGenericProduct
+                        ? $genericSellingUnits->isNotEmpty()
+                        : ($hasKgPrice || $hasSackPrice)
+                );
             @endphp
 
             <article class="product-card"
                      data-name="{{ strtolower($product->name ?? '') }}"
                      data-brand="{{ strtolower($product->brand ?? '') }}"
-                     data-type="{{ strtolower($product->rice_type ?? '') }}"
-                     data-price-kg="{{ $hasKgPrice ? (float) $product->price_per_kg : '' }}"
+                     data-type="{{ strtolower($productType) }}"
+                     data-price-unit="{{ $sortPrice ?? '' }}"
                      data-price-sack="{{ $hasSackPrice ? (float) $product->price_per_sack : '' }}"
                      data-original-order="{{ $loop->index }}">
                 <div class="product-visual">
@@ -1134,7 +1246,7 @@
                              onerror="this.style.display='none';this.nextElementSibling.hidden=false;">
                         <div class="image-fallback" hidden>
                             <span aria-hidden="true">🌾</span>
-                            <small>{{ $product->category ?: ($product->rice_type ?: 'PRODUCT') }}</small>
+                            <small>{{ $productType }}</small>
                         </div>
                     @elseif ($mappedImageExists)
                         <img src="{{ asset('images/products/' . $imageFile) }}"
@@ -1143,58 +1255,105 @@
                              onerror="this.style.display='none';this.nextElementSibling.hidden=false;">
                         <div class="image-fallback" hidden>
                             <span aria-hidden="true">🌾</span>
-                            <small>{{ $product->category ?: ($product->rice_type ?: 'PRODUCT') }}</small>
+                            <small>{{ $productType }}</small>
                         </div>
                     @else
                         <div class="image-fallback">
                             <span aria-hidden="true">🌾</span>
-                            <small>{{ $product->category ?: ($product->rice_type ?: 'PRODUCT') }}</small>
+                            <small>{{ $productType }}</small>
                         </div>
                     @endif
                 </div>
 
                 <div class="product-body">
-                    <div class="product-type">{{ $product->rice_type ?: 'Rice' }}</div>
+                    <div class="product-type">{{ $productType }}</div>
                     <h3>{{ $product->name }}</h3>
 
                     <div class="product-brand">
                         {{ $product->brand ?: 'H&K Consumer Goods Store' }}
                     </div>
 
+                    @if ($product->variant_size || $product->variant_color)
+                        <p class="product-description">
+                            @if ($product->variant_size) Size: {{ $product->variant_size }} @endif
+                            @if ($product->variant_color) · Color: {{ $product->variant_color }} @endif
+                        </p>
+                    @endif
+
+                    @if ($product->approved_reviews_count > 0)
+                        <p class="product-rating" aria-label="Rated {{ number_format((float) $product->approved_reviews_avg, 1) }} out of 5">
+                            <span aria-hidden="true">&#9733;</span>
+                            {{ number_format((float) $product->approved_reviews_avg, 1) }}
+                            <span class="product-brand">({{ $product->approved_reviews_count }} reviews)</span>
+                        </p>
+                        @foreach ($product->reviews as $review)
+                            @if ($review->review || $review->photo_path)
+                                <div class="product-review-snippet">
+                                    <strong>{{ $review->user?->name ?? 'Customer' }}</strong>
+                                    <span aria-label="{{ $review->rating }} out of 5 stars">{{ str_repeat('★', $review->rating) }}</span>
+                                    @if ($review->review)<p>{{ $review->review }}</p>@endif
+                                    @if ($review->photo_path)
+                                        <img src="{{ asset('storage/' . $review->photo_path) }}" alt="Customer review photo for {{ $product->name }}" loading="lazy" width="96" height="72">
+                                    @endif
+                                </div>
+                            @endif
+                        @endforeach
+                    @endif
+
                     @if ($product->description)
                         <p class="product-description">{{ $product->description }}</p>
                     @endif
 
                     <div class="price-panel">
-                        <div class="price-row">
-                            <span class="price-label">Per kilogram</span>
-                            <span class="price-value">
-                                @if ($hasKgPrice)
-                                    ₱{{ number_format((float) $product->price_per_kg, 2) }}
-                                @else
-                                    <span class="price-label">Not confirmed</span>
-                                @endif
-                            </span>
-                        </div>
+                        @if ($isGenericProduct)
+                            @forelse ($product->sellingUnits as $sellingUnit)
+                                <div class="price-row">
+                                    <span class="price-label">Per {{ $sellingUnit->unit_name }}</span>
+                                    <span class="price-value">
+                                        @if ((bool) $product->price_confirmed && (float) $sellingUnit->selling_price > 0)
+                                            ₱{{ number_format((float) $sellingUnit->selling_price, 2) }}
+                                        @else
+                                            <span class="price-label">Not confirmed</span>
+                                        @endif
+                                    </span>
+                                </div>
+                            @empty
+                                <div class="price-row">
+                                    <span class="price-label">Price</span>
+                                    <span class="price-value"><span class="price-label">Not confirmed</span></span>
+                                </div>
+                            @endforelse
+                        @else
+                            <div class="price-row">
+                                <span class="price-label">Per kilogram</span>
+                                <span class="price-value">
+                                    @if ($hasKgPrice)
+                                        ₱{{ number_format((float) $product->price_per_kg, 2) }}
+                                    @else
+                                        <span class="price-label">Not confirmed</span>
+                                    @endif
+                                </span>
+                            </div>
 
-                        <div class="price-row">
-                            <span class="price-label">
-                                @if ($product->sack_weight_kg)
-                                    {{ $product->sack_weight_kg }} kg sack/pack
-                                @else
-                                    Per sack/pack
-                                @endif
-                            </span>
-                            <span class="price-value">
-                                @if ($hasSackPrice)
-                                    ₱{{ number_format((float) $product->price_per_sack, 2) }}
-                                @else
-                                    <span class="price-label">Not confirmed</span>
-                                @endif
-                            </span>
-                        </div>
+                            <div class="price-row">
+                                <span class="price-label">
+                                    @if ($product->sack_weight_kg)
+                                        {{ $product->sack_weight_kg }} kg sack/pack
+                                    @else
+                                        Per sack/pack
+                                    @endif
+                                </span>
+                                <span class="price-value">
+                                    @if ($hasSackPrice)
+                                        ₱{{ number_format((float) $product->price_per_sack, 2) }}
+                                    @else
+                                        <span class="price-label">Not confirmed</span>
+                                    @endif
+                                </span>
+                            </div>
+                        @endif
 
-                        @if (!$hasKgPrice && !$hasSackPrice)
+                        @if (!$isGenericProduct && !$hasKgPrice && !$hasSackPrice)
                             <div class="price-pending">Price to be confirmed</div>
                         @endif
                     </div>
@@ -1208,7 +1367,9 @@
                         <div class="stock low">
                             <span class="stock-dot"></span>
                             Limited stock ·
-                            @if ($stockSacks !== null)
+                            @if ($isGenericProduct)
+                                {{ number_format($stock, $stock == floor($stock) ? 0 : 2) }} {{ $stockUnitLabel }}
+                            @elseif ($stockSacks !== null)
                                 {{ number_format($stockSacks, 2) }} sacks
                             @else
                                 {{ number_format($stock, 2) }} kg
@@ -1218,7 +1379,9 @@
                         <div class="stock">
                             <span class="stock-dot"></span>
                             In stock ·
-                            @if ($stockSacks !== null)
+                            @if ($isGenericProduct)
+                                {{ number_format($stock, $stock == floor($stock) ? 0 : 2) }} {{ $stockUnitLabel }}
+                            @elseif ($stockSacks !== null)
                                 {{ number_format($stockSacks, 2) }} sacks
                             @else
                                 {{ number_format($stock, 2) }} kg
@@ -1234,21 +1397,28 @@
                                       class="add-cart-form">
                                     @csrf
 
-                                    <label for="unit-{{ $product->id }}">Choose package</label>
+                                    <label for="unit-{{ $product->id }}">{{ $isGenericProduct ? 'Choose unit' : 'Choose package' }}</label>
                                     <select class="field package-select"
                                             id="unit-{{ $product->id }}"
                                             name="unit"
+                                            data-generic="{{ $isGenericProduct ? '1' : '0' }}"
                                             required>
-                                        @if ($hasKgPrice)
+                                        @if ($isGenericProduct)
+                                            @foreach ($genericSellingUnits as $sellingUnit)
+                                                <option value="{{ $sellingUnit->unit_name }}" @selected(strtolower($sellingUnit->unit_name) === $genericBaseUnit)>
+                                                    {{ ucfirst($sellingUnit->unit_name) }} · ₱{{ number_format((float) $sellingUnit->selling_price, 2) }}
+                                                </option>
+                                            @endforeach
+                                        @elseif ($hasKgPrice)
                                             <option value="kg">Per kilogram</option>
                                         @endif
-                                        @if ($hasSackPrice)
+                                        @if (!$isGenericProduct && $hasSackPrice)
                                             <option value="sack">{{ $product->sack_weight_kg }} kg sack/pack</option>
                                         @endif
                                     </select>
 
                                     <label for="quantity-{{ $product->id }}">
-                                        Quantity <span class="quantity-unit">(kg)</span>
+                                        Quantity <span class="quantity-unit">({{ $isGenericProduct ? $genericBaseUnit : 'kg' }})</span>
                                     </label>
 
                                     <div class="quantity-control">
@@ -1259,10 +1429,10 @@
                                                id="quantity-{{ $product->id }}"
                                                type="number"
                                                name="quantity"
-                                               min="5"
+                                               min="{{ $isGenericProduct ? '1' : '5' }}"
                                                max="1000"
                                                step="1"
-                                               value="5"
+                                               value="{{ $isGenericProduct ? '1' : '5' }}"
                                                required
                                                inputmode="numeric">
                                         <button class="quantity-button quantity-plus"
@@ -1270,16 +1440,16 @@
                                                 aria-label="Increase quantity">+</button>
                                     </div>
 
-                                    <small class="quantity-hint">Minimum order: 5 kg.</small>
+                                    <small class="quantity-hint">{{ $isGenericProduct ? 'Enter the quantity in the selected unit.' : 'Minimum order: 5 kg.' }}</small>
                                     <button class="btn" type="submit">Add to Cart</button>
                                 </form>
-                            @elseif (!$product->price_confirmed)
+                            @elseif (!$product->price_confirmed || ($isGenericProduct && $genericSellingUnits->isEmpty()))
                                 <p class="price-pending">Price has not yet been confirmed.</p>
                             @else
                                 <p class="price-pending">This product is currently unavailable.</p>
                             @endif
                         @else
-                            @if (!$product->price_confirmed)
+                            @if (!$product->price_confirmed || ($isGenericProduct && $genericSellingUnits->isEmpty()))
                                 <p class="price-pending">Price has not yet been confirmed.</p>
                             @elseif ($stock <= 0)
                                 <p class="price-pending">This product is currently out of stock.</p>
@@ -1288,13 +1458,34 @@
                             @endif
                         @endauth
                     </div>
+
+                    @if (auth()->check() && auth()->user()->isCustomer())
+                        @php
+                            $isFavorite = in_array($product->id, $favoriteProductIds ?? [], true);
+                        @endphp
+                        <form class="favorite-form" method="POST" action="{{ $isFavorite ? route('customer.favorites.destroy', $product) : route('customer.favorites.store', $product) }}">
+                            @csrf
+                            @if ($isFavorite)
+                                @method('DELETE')
+                            @endif
+                            <button
+                                class="favorite-button"
+                                type="submit"
+                                aria-pressed="{{ $isFavorite ? 'true' : 'false' }}"
+                                aria-label="{{ $isFavorite ? 'Remove ' . $product->name . ' from favorites' : 'Save ' . $product->name . ' to favorites' }}"
+                            >
+                                <span aria-hidden="true">{{ $isFavorite ? '&#9829;' : '&#9825;' }}</span>
+                                {{ $isFavorite ? 'Saved' : 'Save for later' }}
+                            </button>
+                        </form>
+                    @endif
                 </div>
             </article>
         @endforeach
 
         <div class="empty" id="no-products" hidden>
             <h3>No matching products found</h3>
-            <p>Try another search term or select a different rice type.</p>
+            <p>Try another search term or select a different product type.</p>
             <button class="btn" type="button" id="clear-search">Clear search and filters</button>
         </div>
     </div>
@@ -1329,7 +1520,7 @@
             <div class="contact-item">
                 <strong>Browse products</strong>
                 <p>See available rice varieties, prices, and stock.</p>
-                <a href="#products">View rice menu</a>
+                <a href="#products">View products</a>
             </div>
             <div class="contact-item">
                 <strong>Contact details</strong>
@@ -1387,10 +1578,10 @@
 
         visibleCards.sort((a, b) => {
             if (sortValue === 'price_asc' || sortValue === 'price_desc') {
-                const priceA = a.dataset.priceKg === ''
-                    ? null : Number(a.dataset.priceKg);
-                const priceB = b.dataset.priceKg === ''
-                    ? null : Number(b.dataset.priceKg);
+                const priceA = a.dataset.priceUnit === ''
+                    ? null : Number(a.dataset.priceUnit);
+                const priceB = b.dataset.priceUnit === ''
+                    ? null : Number(b.dataset.priceUnit);
 
                 if (priceA === null && priceB !== null) return 1;
                 if (priceA !== null && priceB === null) return -1;
@@ -1473,15 +1664,20 @@
         const plusButton = cartForm.querySelector('.quantity-plus');
 
         function updateQuantityRules(resetToDefault = false) {
-            const isSack = packageSelect.value === 'sack';
-            const defaultQuantity = isSack ? 1 : 5;
+            const isGeneric = packageSelect.dataset.generic === '1';
+            const isSack = !isGeneric && packageSelect.value === 'sack';
+            const defaultQuantity = isGeneric || isSack ? 1 : 5;
 
-            quantityInput.min = isSack ? '1' : '5';
+            quantityInput.min = isGeneric || isSack ? '1' : '5';
             quantityInput.step = '1';
-            quantityUnit.textContent = isSack ? '(sacks)' : '(kg)';
-            quantityHint.textContent = isSack
+            quantityUnit.textContent = isGeneric
+                ? '(' + packageSelect.options[packageSelect.selectedIndex].text.split(' · ')[0].toLowerCase() + ')'
+                : (isSack ? '(sacks)' : '(kg)');
+            quantityHint.textContent = isGeneric
+                ? 'Enter the quantity in the selected unit.'
+                : (isSack
                 ? 'Enter the number of sacks.'
-                : 'Minimum order: 5 kg.';
+                : 'Minimum order: 5 kg.');
 
             const minimum = Number(quantityInput.min);
             const maximum = Number(quantityInput.max) || 1000;
@@ -1556,5 +1752,6 @@
     updateProducts(false);
 })();
 </script>
+    @include('components.smart-assistant')
 </body>
 </html>

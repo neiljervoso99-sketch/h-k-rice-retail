@@ -1,10 +1,19 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Admin Dashboard') | H&amp;K Consumer Goods Store</title>
     <link rel="icon" type="image/png" href="{{ asset('images/HK_Consumer_Goods_Store_logo.png') }}">
+    @vite('resources/js/app.js')
+    <script>
+        const adminThemeKey = 'admin-theme-{{ auth()->id() }}';
+        const savedAdminTheme = localStorage.getItem(adminThemeKey);
+        document.documentElement.dataset.theme = savedAdminTheme === 'light'
+            ? 'light'
+            : 'dark';
+    </script>
 
     <style>
         :root {
@@ -16,6 +25,16 @@
             --text: #263b2b;
             --muted: #657267;
             --danger: #a52b24;
+        }
+
+        :root[data-theme="dark"] {
+            color-scheme: dark;
+            --page-bg: #0d1323;
+            --border: #293149;
+            --text: #ecf1ff;
+            --muted: #9aa5bd;
+            --green-light: #1a2439;
+            --danger: #fca5a5;
         }
 
         * {
@@ -88,6 +107,40 @@
         .profile-container {
             position: relative;
             flex-shrink: 0;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-shrink: 0;
+        }
+
+        .theme-toggle {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+            min-height: 40px;
+            padding: 8px 12px;
+            border: 1px solid rgba(255, 255, 255, .35);
+            border-radius: 22px;
+            background: rgba(255, 255, 255, .10);
+            color: #fff;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .theme-toggle:hover,
+        .theme-toggle:focus-visible {
+            background: rgba(255, 255, 255, .20);
+        }
+
+        .theme-toggle-icon {
+            font-size: 16px;
+            line-height: 1;
         }
 
         .profile-trigger {
@@ -237,6 +290,50 @@
             padding: 22px 14px;
             background: #fff;
             border-right: 1px solid var(--border);
+        }
+
+        :root[data-theme="dark"] .sidebar {
+            background: #11192a;
+        }
+
+        :root[data-theme="dark"] .sidebar-brand h2,
+        :root[data-theme="dark"] .page-heading h1,
+        :root[data-theme="dark"] .panel h2,
+        :root[data-theme="dark"] .panel h3,
+        :root[data-theme="dark"] .summary-card strong,
+        :root[data-theme="dark"] .summary-card p {
+            color: var(--text);
+        }
+
+        :root[data-theme="dark"] .panel,
+        :root[data-theme="dark"] .summary-card,
+        :root[data-theme="dark"] .summary-grid > div {
+            background-color: #131b2e;
+            border-color: var(--border);
+            color: var(--text);
+        }
+
+        :root[data-theme="dark"] .table-wrap th,
+        :root[data-theme="dark"] th {
+            background: #1a2439;
+            color: #d3dbed;
+        }
+
+        :root[data-theme="dark"] td {
+            color: #d3dbed;
+        }
+
+        :root[data-theme="dark"] input,
+        :root[data-theme="dark"] select,
+        :root[data-theme="dark"] textarea {
+            border-color: #3a465e;
+            background: #11192a;
+            color: #ecf1ff;
+        }
+
+        :root[data-theme="dark"] input::placeholder,
+        :root[data-theme="dark"] textarea::placeholder {
+            color: #9aa5bd;
         }
 
         .sidebar-brand {
@@ -682,6 +779,21 @@
                 padding: 3px;
             }
 
+            .header-actions {
+                gap: 5px;
+            }
+
+            .theme-toggle {
+                width: 38px;
+                min-width: 38px;
+                min-height: 38px;
+                padding: 6px;
+            }
+
+            .theme-toggle-label {
+                display: none;
+            }
+
             .profile-avatar {
                 width: 34px;
                 height: 34px;
@@ -870,6 +982,83 @@
                 max-width: 100%;
             }
         }
+
+        @media (max-width: 560px) {
+            .sidebar {
+                top: auto;
+                bottom: 0;
+                width: 100%;
+                max-height: calc(86px + env(safe-area-inset-bottom));
+                overflow-x: auto;
+                overflow-y: hidden;
+                padding: 6px 6px calc(6px + env(safe-area-inset-bottom));
+                border-top: 1px solid var(--border);
+                border-right: 0;
+                box-shadow: 0 -3px 14px rgba(0, 0, 0, .08);
+                scrollbar-width: none;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .sidebar::-webkit-scrollbar {
+                display: none;
+            }
+
+            .sidebar-brand,
+            .menu-heading,
+            .sidebar-divider,
+            .sidebar > form {
+                display: none;
+            }
+
+            .sidebar-nav {
+                width: max-content;
+                min-width: 100%;
+                flex-direction: row;
+                justify-content: flex-start;
+                gap: 3px;
+            }
+
+            .sidebar-nav a {
+                min-width: 72px;
+                min-height: 60px;
+                flex: 0 0 auto;
+                flex-direction: column;
+                justify-content: center;
+                gap: 3px;
+                padding: 5px 4px;
+                text-align: center;
+            }
+
+            .sidebar-nav .menu-icon,
+            .sidebar-nav .sidebar-icon {
+                width: auto;
+                font-size: 17px;
+            }
+
+            .sidebar-nav .menu-label,
+            .sidebar-nav a > span:last-child {
+                display: block;
+                max-width: 68px;
+                font-size: 9px;
+                line-height: 1.1;
+                white-space: normal;
+            }
+
+            .admin-header {
+                left: 0;
+                right: 0;
+            }
+
+            .admin-main {
+                margin-left: 0;
+                padding-bottom: calc(100px + env(safe-area-inset-bottom));
+            }
+
+            .table-wrap {
+                max-width: 100%;
+                overscroll-behavior-x: contain;
+            }
+        }
     </style>
 </head>
 <body>
@@ -877,6 +1066,8 @@
         $adminUser = auth()->user();
         $adminName = $adminUser?->name ?? 'Administrator';
         $adminEmail = $adminUser?->email ?? 'No email available';
+        $isAdministrator = $adminUser?->isAdmin() ?? false;
+        $adminRoleLabel = $isAdministrator ? 'Administrator' : 'Staff';
 
         $adminInitials = collect(preg_split('/\s+/', trim($adminName)))
             ->filter()
@@ -902,7 +1093,7 @@
 
             <div class="sidebar-brand-text">
                 <h2>H&amp;K Consumer Goods Store</h2>
-                <p>Admin Panel</p>
+                <p>{{ $adminRoleLabel }} Panel</p>
             </div>
         </div>
 
@@ -915,10 +1106,29 @@
                 <span class="menu-label">Dashboard</span>
             </a>
 
+            <a href="{{ route('admin.manual-transactions.index') }}"
+               class="{{ request()->routeIs('admin.manual-transactions.*') ? 'active' : '' }}">
+                <span class="sidebar-icon">🧾</span>
+                <span class="menu-label">Manual Transactions</span>
+            </a>
+
+            @if ($isAdministrator)
             <a href="{{ route('admin.products.index') }}"
                class="{{ request()->routeIs('admin.products.*') ? 'active' : '' }}">
                 <span class="menu-icon">▦</span>
                 <span class="menu-label">Products</span>
+            </a>
+
+            <a href="{{ route('admin.reviews.index') }}"
+               class="{{ request()->routeIs('admin.reviews.*') ? 'active' : '' }}">
+                <span class="menu-icon">&#9733;</span>
+                <span class="menu-label">Product Reviews</span>
+            </a>
+
+            <a href="{{ route('admin.bundles.index') }}"
+               class="{{ request()->routeIs('admin.bundles.*') ? 'active' : '' }}">
+                <span class="menu-icon">▣</span>
+                <span class="menu-label">Bundle Packs</span>
             </a>
 
             <a href="{{ route('admin.inventory.index') }}"
@@ -930,12 +1140,6 @@
    class="{{ request()->routeIs('admin.orders.*') ? 'active' : '' }}">
     <span class="menu-icon">☷</span>
     <span class="menu-label">Customer Orders</span>
-</a>
-
-<a href="{{ route('admin.manual-transactions.index') }}"
-   class="{{ request()->routeIs('admin.manual-transactions.*') ? 'active' : '' }}">
-    <span class="sidebar-icon">🧾</span>
-    <span>Manual Transactions</span>
 </a>
 
             <a href="{{ route('admin.profit-pricing.index') }}"
@@ -955,6 +1159,13 @@
                 <span class="menu-icon">▥</span>
                 <span class="menu-label">Reports</span>
             </a>
+
+            <a href="{{ route('admin.users.index') }}"
+               class="{{ request()->routeIs('admin.users.*') ? 'active' : '' }}">
+                <span class="menu-icon">♙</span>
+                <span class="menu-label">Users &amp; Roles</span>
+            </a>
+            @endif
         </nav>
 
         <div class="sidebar-divider"></div>
@@ -982,12 +1193,26 @@
             </div>
         </div>
 
+        <div class="header-actions">
+            <button
+                class="theme-toggle"
+                id="themeToggle"
+                type="button"
+                aria-label="Switch to light mode"
+                aria-pressed="true"
+            >
+                <span class="theme-toggle-icon" aria-hidden="true">☀</span>
+                <span class="theme-toggle-label">Light mode</span>
+            </button>
+
+            @include('components.notification-center')
+
         <div class="profile-container">
             <button
                 class="profile-trigger"
                 id="profileTrigger"
                 type="button"
-                aria-label="Open admin profile menu"
+                aria-label="Open account menu"
                 aria-haspopup="true"
                 aria-expanded="false"
                 aria-controls="profileDropdown"
@@ -1002,7 +1227,7 @@
 
                 <span class="profile-info">
                     <span class="profile-name">{{ $adminName }}</span>
-                    <span class="profile-role">Administrator</span>
+                    <span class="profile-role">{{ $adminRoleLabel }}</span>
                 </span>
 
                 <span class="profile-arrow" aria-hidden="true">▼</span>
@@ -1010,7 +1235,7 @@
 
             <div class="profile-dropdown" id="profileDropdown" hidden>
                 <div class="profile-dropdown-header">
-                    <strong>Admin Profile</strong>
+                    <strong>{{ $adminRoleLabel }} Account</strong>
                     <span>{{ $adminName }}</span>
                     <br>
                     <span>{{ $adminEmail }}</span>
@@ -1018,7 +1243,7 @@
 
                 <a class="profile-menu-link" href="{{ route('admin.profile.edit') }}">
                     <span class="profile-menu-icon">👤</span>
-                    <span>Admin Profile</span>
+                    <span>My Profile &amp; Activity</span>
                 </a>
 
                 <form method="POST" action="{{ route('logout') }}">
@@ -1029,6 +1254,7 @@
                     </button>
                 </form>
             </div>
+        </div>
         </div>
     </header>
 
@@ -1053,8 +1279,248 @@
         @yield('content')
     </main>
 
+    <style>
+        :root[data-theme="dark"] .admin-main {
+            color: #ecf1ff;
+        }
+
+        :root[data-theme="dark"] .admin-main h1,
+        :root[data-theme="dark"] .admin-main h2,
+        :root[data-theme="dark"] .admin-main h3,
+        :root[data-theme="dark"] .admin-main h4,
+        :root[data-theme="dark"] .admin-main h5,
+        :root[data-theme="dark"] .admin-main h6,
+        :root[data-theme="dark"] .admin-main .fw-bold,
+        :root[data-theme="dark"] .admin-main .fw-semibold {
+            color: #ecf1ff;
+        }
+
+        :root[data-theme="dark"] .admin-main .text-muted,
+        :root[data-theme="dark"] .admin-main .muted,
+        :root[data-theme="dark"] .admin-main small,
+        :root[data-theme="dark"] .admin-main .page-heading p {
+            color: #aab6cb !important;
+        }
+
+        :root[data-theme="dark"] .admin-main .panel,
+        :root[data-theme="dark"] .admin-main .summary-card,
+        :root[data-theme="dark"] .admin-main .card,
+        :root[data-theme="dark"] .admin-main .report-panel,
+        :root[data-theme="dark"] .admin-main .pos-product-panel {
+            border-color: #293149;
+            background-color: #131b2e;
+            color: #ecf1ff;
+        }
+
+        :root[data-theme="dark"] .admin-main .card-header,
+        :root[data-theme="dark"] .admin-main .card-footer,
+        :root[data-theme="dark"] .admin-main .bg-white {
+            border-color: #293149 !important;
+            background-color: #131b2e !important;
+            color: #ecf1ff !important;
+        }
+
+        :root[data-theme="dark"] .admin-main .bg-light,
+        :root[data-theme="dark"] .admin-main .table-light {
+            --bs-bg-opacity: 1;
+            --bs-table-bg: #1a2439;
+            --bs-table-color: #d3dbed;
+            background-color: #1a2439 !important;
+            color: #d3dbed !important;
+        }
+
+        :root[data-theme="dark"] .admin-main label,
+        :root[data-theme="dark"] .admin-main .form-label,
+        :root[data-theme="dark"] .admin-main legend {
+            color: #d3dbed;
+        }
+
+        :root[data-theme="dark"] .admin-main input:not([type="checkbox"]):not([type="radio"]),
+        :root[data-theme="dark"] .admin-main select,
+        :root[data-theme="dark"] .admin-main textarea,
+        :root[data-theme="dark"] .admin-main .form-control,
+        :root[data-theme="dark"] .admin-main .form-select {
+            border-color: #3a465e;
+            background-color: #11192a;
+            color: #ecf1ff;
+        }
+
+        :root[data-theme="dark"] .admin-main input::placeholder,
+        :root[data-theme="dark"] .admin-main textarea::placeholder {
+            color: #9aa5bd;
+        }
+
+        :root[data-theme="dark"] .admin-main option {
+            background: #11192a;
+            color: #ecf1ff;
+        }
+
+        :root[data-theme="dark"] .admin-main .table,
+        :root[data-theme="dark"] .admin-main table {
+            --bs-table-bg: #11192a;
+            --bs-table-color: #d3dbed;
+            --bs-table-border-color: #293149;
+            color: #d3dbed;
+        }
+
+        :root[data-theme="dark"] .admin-main th {
+            border-color: #293149;
+            background-color: #1a2439;
+            color: #d3dbed;
+        }
+
+        :root[data-theme="dark"] .admin-main td {
+            border-color: #293149;
+            color: #d3dbed;
+        }
+
+        :root[data-theme="dark"] .admin-main tbody tr:hover > td {
+            background-color: #1a2439;
+        }
+
+        :root[data-theme="dark"] .admin-main .border,
+        :root[data-theme="dark"] .admin-main .border-top,
+        :root[data-theme="dark"] .admin-main .border-bottom {
+            border-color: #293149 !important;
+        }
+
+        :root[data-theme="dark"] .admin-main .alert-success {
+            border-color: #35533e;
+            background-color: #172a22;
+            color: #c9ead0;
+        }
+
+        :root[data-theme="dark"] .admin-main .alert-danger {
+            border-color: #653b42;
+            background-color: #332027;
+            color: #ffb4ad;
+        }
+
+        :root[data-theme="dark"] .admin-main .alert-warning {
+            border-color: #66512a;
+            background-color: #332a18;
+            color: #f5d894;
+        }
+
+        :root[data-theme="dark"] .admin-main .pagination .page-link {
+            border-color: #3a465e;
+            background-color: #131b2e;
+            color: #d3dbed;
+        }
+
+        :root[data-theme="dark"] .admin-main .pagination .page-item.active .page-link {
+            border-color: #245b38;
+            background-color: #245b38;
+            color: #fff;
+        }
+
+        :root[data-theme="dark"] .admin-main .manual-transaction-page .transaction-item,
+        :root[data-theme="dark"] .admin-main .manual-transaction-page #cashPaymentFields,
+        :root[data-theme="dark"] .admin-main .manual-transaction-page #paymentMessage {
+            border-color: #293149 !important;
+            background-color: #11192a !important;
+            color: #d3dbed;
+        }
+
+        :root[data-theme="dark"] .admin-main .manual-transaction-page .transaction-item h6,
+        :root[data-theme="dark"] .admin-main .manual-transaction-page .form-label {
+            color: #d3dbed;
+        }
+
+        :root[data-theme="dark"] .admin-main .manual-transaction-page .line-total,
+        :root[data-theme="dark"] .admin-main .manual-transaction-page #grandTotal {
+            color: #9fe0b0;
+        }
+
+        :root[data-theme="dark"] .admin-main .manual-transaction-page > .d-flex:first-child {
+            border-color: #293149;
+            background: #131b2e;
+        }
+
+        :root[data-theme="dark"] .admin-main .manual-transaction-page .pos-search,
+        :root[data-theme="dark"] .admin-main .manual-transaction-page .pos-category-filters button,
+        :root[data-theme="dark"] .admin-main .manual-transaction-page .pos-product-tile {
+            border-color: #3a465e;
+            background: #11192a;
+            color: #ecf1ff;
+        }
+
+        :root[data-theme="dark"] .admin-main .manual-transaction-page .pos-search > span,
+        :root[data-theme="dark"] .admin-main .manual-transaction-page .pos-product-tile .pos-tile-type,
+        :root[data-theme="dark"] .admin-main .manual-transaction-page .pos-product-tile .pos-tile-stock,
+        :root[data-theme="dark"] .admin-main .manual-transaction-page .pos-empty-products {
+            color: #aab6cb;
+        }
+
+        :root[data-theme="dark"] .admin-main .manual-transaction-page .pos-product-count {
+            background: #1a2b43;
+            color: #b8d7ff;
+        }
+
+        :root[data-theme="dark"] .admin-main .manual-transaction-page .pos-cart-tip {
+            background: #172a22;
+            color: #c9ead0;
+        }
+
+        :root[data-theme="dark"] .admin-main .manual-transaction-page .pos-product-tile .pos-tile-price {
+            color: #9fe0b0;
+        }
+
+        :root[data-theme="dark"] .admin-main .manual-transaction-page #paymentSummary {
+            border-color: #35533e !important;
+            background-color: #131f24 !important;
+        }
+
+        :root[data-theme="dark"] .admin-main .manual-transaction-page #paymentSummary .card-header {
+            border-color: #35533e !important;
+            background-color: #172a22 !important;
+            color: #c9ead0 !important;
+        }
+
+        :root[data-theme="dark"] .admin-main .manual-transaction-page #paymentSummary .border.rounded,
+        :root[data-theme="dark"] .admin-main .manual-transaction-page .d-flex.justify-content-end.mt-4 > div {
+            border-color: #35533e !important;
+            background-color: #172a22 !important;
+            color: #c9ead0;
+        }
+    </style>
+
     <script>
         document.addEventListener('DOMContentLoaded', function () {
+            const themeToggle = document.getElementById('themeToggle');
+            const themeIcon = themeToggle?.querySelector('.theme-toggle-icon');
+            const themeLabel = themeToggle?.querySelector('.theme-toggle-label');
+
+            function updateThemeToggle() {
+                const isDark = document.documentElement.dataset.theme === 'dark';
+
+                if (!themeToggle || !themeIcon || !themeLabel) {
+                    return;
+                }
+
+                themeToggle.setAttribute('aria-pressed', String(isDark));
+                themeToggle.setAttribute(
+                    'aria-label',
+                    isDark ? 'Switch to light mode' : 'Switch to dark mode'
+                );
+                themeIcon.textContent = isDark ? '☀' : '☾';
+                themeLabel.textContent = isDark ? 'Light mode' : 'Dark mode';
+            }
+
+            updateThemeToggle();
+            themeToggle?.addEventListener('click', function () {
+                const nextTheme = document.documentElement.dataset.theme === 'dark'
+                    ? 'light'
+                    : 'dark';
+
+                document.documentElement.dataset.theme = nextTheme;
+                localStorage.setItem(adminThemeKey, nextTheme);
+                updateThemeToggle();
+                document.dispatchEvent(new CustomEvent('admin-theme-change', {
+                    detail: { theme: nextTheme },
+                }));
+            });
+
             const trigger = document.getElementById('profileTrigger');
             const dropdown = document.getElementById('profileDropdown');
 
@@ -1089,5 +1555,6 @@
             });
         });
     </script>
+    @include('components.smart-assistant')
 </body>
 </html>

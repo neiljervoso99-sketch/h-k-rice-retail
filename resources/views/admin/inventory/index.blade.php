@@ -197,6 +197,27 @@
         background: #fff;
     }
 
+    .inventory-dashboard .forecast-status {
+        display: inline-flex;
+        padding: 5px 8px;
+        border-radius: 5px;
+        background: #eaf3e9;
+        color: #285337;
+        font-size: 11px;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+
+    .inventory-dashboard .forecast-status.warning {
+        background: #fff3d8;
+        color: #765514;
+    }
+
+    .inventory-dashboard .forecast-status.danger {
+        background: #ffebe8;
+        color: #9c3028;
+    }
+
     .inventory-dashboard table {
         min-width: 700px;
         border-collapse: separate;
@@ -298,6 +319,86 @@
         padding: 9px 13px;
         border-radius: 7px;
         font-size: 12px;
+    }
+
+    :root[data-theme="dark"] .inventory-dashboard {
+        --inventory-muted: #aab6cb;
+        --inventory-border: #293149;
+    }
+
+    :root[data-theme="dark"] .inventory-dashboard .page-heading {
+        border-color: var(--inventory-border);
+        background: #131b2e;
+    }
+
+    :root[data-theme="dark"] .inventory-dashboard .page-heading h1,
+    :root[data-theme="dark"] .inventory-dashboard .inventory-stat-value,
+    :root[data-theme="dark"] .inventory-dashboard .field label,
+    :root[data-theme="dark"] .inventory-dashboard .panel label {
+        color: #ecf1ff;
+    }
+
+    :root[data-theme="dark"] .inventory-dashboard .page-heading p,
+    :root[data-theme="dark"] .inventory-dashboard .panel > p,
+    :root[data-theme="dark"] .inventory-dashboard .inventory-stat-label {
+        color: var(--inventory-muted);
+    }
+
+    :root[data-theme="dark"] .inventory-dashboard .inventory-stat {
+        border-color: var(--inventory-border);
+        background: #131b2e;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, .14);
+    }
+
+    :root[data-theme="dark"] .inventory-dashboard .field input,
+    :root[data-theme="dark"] .inventory-dashboard .field select,
+    :root[data-theme="dark"] .inventory-dashboard .field textarea {
+        border-color: #3a465e;
+    }
+
+    :root[data-theme="dark"] .inventory-dashboard #stock_in_form > .field:nth-of-type(2),
+    :root[data-theme="dark"] .inventory-dashboard .movement-filters {
+        border-color: var(--inventory-border);
+        background: #11192a;
+    }
+
+    :root[data-theme="dark"] .inventory-dashboard #matched_product_panel {
+        border-color: #35533e;
+        background: #172a22;
+    }
+
+    :root[data-theme="dark"] .inventory-dashboard #matched_product_panel h3 {
+        color: #c9ead0;
+    }
+
+    :root[data-theme="dark"] .inventory-dashboard .notice.warning {
+        border-color: #66512a;
+        background: #332a18;
+        color: #f5d894;
+    }
+
+    :root[data-theme="dark"] .inventory-dashboard .table-wrap {
+        border-color: var(--inventory-border);
+        background: #11192a;
+    }
+
+    :root[data-theme="dark"] .inventory-dashboard th {
+        border-bottom-color: var(--inventory-border);
+    }
+
+    :root[data-theme="dark"] .inventory-dashboard td {
+        border-bottom-color: var(--inventory-border);
+        color: #d3dbed;
+    }
+
+    :root[data-theme="dark"] .inventory-dashboard tbody tr:hover {
+        background: #1a2439;
+    }
+
+    :root[data-theme="dark"] .inventory-dashboard .inventory-product-placeholder {
+        border-color: var(--inventory-border);
+        background: #1a2439;
+        color: #aab6cb;
     }
 
     @media (max-width: 1100px) {
@@ -672,6 +773,48 @@
         @endforeach
     </div>
 @endif
+
+<div class="panel inventory-stock-forecast">
+    <h2>Sales-Based Stock Forecast</h2>
+    <p>Estimated from recorded sales movements over the last 30 days. Use this as a restocking guide, not a guaranteed prediction.</p>
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Product</th>
+                    <th>Current Stock</th>
+                    <th>Sold, 30 days</th>
+                    <th>Daily Average</th>
+                    <th>Estimated Days Left</th>
+                    <th>Next 7 Days</th>
+                    <th>Suggested Restock</th>
+                    <th>Signal</th>
+                </tr>
+            </thead>
+            <tbody>
+                @forelse ($stockForecasts as $forecast)
+                    @php
+                        $daysLeft = (float) $forecast['days_remaining'];
+                        $signalClass = $daysLeft <= 3 ? 'danger' : ($daysLeft <= 7 ? 'warning' : '');
+                        $signalLabel = $daysLeft <= 7 ? 'Restock soon' : 'On track';
+                    @endphp
+                    <tr>
+                        <td>{{ $forecast['product']->name }}</td>
+                        <td>{{ number_format($forecast['stock'], 2) }} {{ $forecast['unit'] }}</td>
+                        <td>{{ number_format($forecast['sold_quantity'], 2) }} {{ $forecast['unit'] }}</td>
+                        <td>{{ number_format($forecast['daily_average'], 2) }} {{ $forecast['unit'] }}/day</td>
+                        <td>{{ number_format($daysLeft, 1) }} days</td>
+                        <td>{{ number_format($forecast['next_week_demand'], 2) }} {{ $forecast['unit'] }}</td>
+                        <td>{{ number_format($forecast['restock_gap'], 2) }} {{ $forecast['unit'] }}</td>
+                        <td><span class="forecast-status {{ $signalClass }}">{{ $signalLabel }}</span></td>
+                    </tr>
+                @empty
+                    <tr><td colspan="8">No recorded sales in the last 30 days to estimate product demand.</td></tr>
+                @endforelse
+            </tbody>
+        </table>
+    </div>
+</div>
 
 <div class="panel inventory-current-stock">
     <h2>Current Stock</h2>

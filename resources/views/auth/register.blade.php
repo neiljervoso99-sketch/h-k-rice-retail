@@ -127,6 +127,34 @@
             color: #6d7c72;
             font-size: 12px;
         }
+
+        @media (max-width: 480px) {
+            body {
+                padding: 14px;
+            }
+
+            .card {
+                padding: 24px 18px;
+                border-radius: 14px;
+            }
+
+            .brand {
+                font-size: 20px;
+            }
+
+            h1 {
+                font-size: 25px;
+            }
+
+            input {
+                min-height: 46px;
+                font-size: 16px;
+            }
+
+            .btn {
+                min-height: 46px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -184,10 +212,14 @@
                 name="password"
                 type="password"
                 autocomplete="new-password"
-                minlength="12"
+                inputmode="numeric"
+                pattern="[0-9]{6}"
+                minlength="6"
+                maxlength="6"
+                title="Enter exactly 6 digits."
                 required
             >
-            <div class="hint">Use at least 12 characters.</div>
+            <div class="hint">Use exactly 6 digits.</div>
 
             <label for="password_confirmation">Confirm password</label>
             <input
@@ -195,7 +227,11 @@
                 name="password_confirmation"
                 type="password"
                 autocomplete="new-password"
-                minlength="12"
+                inputmode="numeric"
+                pattern="[0-9]{6}"
+                minlength="6"
+                maxlength="6"
+                title="Enter exactly 6 digits."
                 required
             >
 

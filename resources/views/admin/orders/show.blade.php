@@ -48,7 +48,7 @@
         </a>
 
         <span class="status-badge status-{{ $statusClass }}">
-            {{ ucfirst($order->status ?? 'Unknown') }}
+            {{ $order->display_status }}
         </span>
     </div>
 
@@ -68,7 +68,22 @@
 
             <div>
                 <span class="field-label">Order Status</span>
-                <strong>{{ ucfirst($order->status ?? 'Unknown') }}</strong>
+                <strong>{{ $order->display_status }}</strong>
+            </div>
+
+            <div>
+                <span class="field-label">Processing</span>
+                <strong>{{ $order->processing_at?->format('M d, Y h:i A') ?? 'Not started' }}</strong>
+            </div>
+
+            <div>
+                <span class="field-label">Shipped</span>
+                <strong>{{ $order->shipped_at?->format('M d, Y h:i A') ?? 'Not shipped' }}</strong>
+            </div>
+
+            <div>
+                <span class="field-label">Delivered</span>
+                <strong>{{ $order->delivered_at?->format('M d, Y h:i A') ?? 'Not delivered' }}</strong>
             </div>
 
             <div>

@@ -290,6 +290,76 @@
         height: 140px !important;
     }
 
+    :root[data-theme="dark"] .product-edit-page .edit-heading,
+    :root[data-theme="dark"] .product-edit-page .edit-panel,
+    :root[data-theme="dark"] .product-edit-page .selling-units-editor {
+        border-color: #293149;
+        background: #131b2e;
+        color: #ecf1ff;
+    }
+
+    :root[data-theme="dark"] .product-edit-page .edit-heading h1,
+    :root[data-theme="dark"] .product-edit-page .edit-panel h2 {
+        color: #ecf1ff;
+    }
+
+    :root[data-theme="dark"] .product-edit-page .edit-heading p,
+    :root[data-theme="dark"] .product-edit-page .panel-help,
+    :root[data-theme="dark"] .product-edit-page .muted {
+        color: #aab6cb;
+    }
+
+    :root[data-theme="dark"] .product-edit-page .field label,
+    :root[data-theme="dark"] .product-edit-page .selling-unit-active {
+        color: #d3dbed;
+    }
+
+    :root[data-theme="dark"] .product-edit-page .field input:not([type="checkbox"]),
+    :root[data-theme="dark"] .product-edit-page .field select,
+    :root[data-theme="dark"] .product-edit-page .field textarea {
+        border-color: #3a465e;
+        background: #11192a;
+        color: #ecf1ff;
+    }
+
+    :root[data-theme="dark"] .product-edit-page .field input::placeholder,
+    :root[data-theme="dark"] .product-edit-page .field textarea::placeholder {
+        color: #9aa5bd;
+    }
+
+    :root[data-theme="dark"] .product-edit-page .image-preview {
+        border-color: #293149;
+        background: #11192a;
+    }
+
+    :root[data-theme="dark"] .product-edit-page .selling-unit-row,
+    :root[data-theme="dark"] .product-edit-page .edit-actions {
+        border-color: #293149;
+    }
+
+    :root[data-theme="dark"] .product-edit-page .quick-stock-current {
+        background: #172a22;
+        color: #c9ead0;
+    }
+
+    :root[data-theme="dark"] .product-edit-page .selling-unit-remove,
+    :root[data-theme="dark"] .product-edit-page .button-secondary {
+        border-color: #3a465e;
+        background: #1a2439;
+        color: #d3dbed;
+    }
+
+    :root[data-theme="dark"] .product-edit-page ~ .notice.success,
+    :root[data-theme="dark"] .product-edit-page .notice.success {
+        background: #172a22;
+        color: #c9ead0;
+    }
+
+    :root[data-theme="dark"] .product-edit-page .notice.error {
+        background: #332027;
+        color: #ffb4ad;
+    }
+
     @media (max-width: 900px) {
         .product-edit-page .edit-layout {
             grid-template-columns: minmax(0, 1fr);
@@ -379,6 +449,16 @@
                 </div>
 
                 <div class="field">
+                    <label for="edit_variant_size">Size / Pack Variant</label>
+                    <input id="edit_variant_size" type="text" name="variant_size" maxlength="80" value="{{ old('variant_size', $product->variant_size) }}" placeholder="e.g. 5 kg, Large">
+                </div>
+
+                <div class="field">
+                    <label for="edit_variant_color">Color Variant</label>
+                    <input id="edit_variant_color" type="text" name="variant_color" maxlength="80" value="{{ old('variant_color', $product->variant_color) }}" placeholder="e.g. Red, Blue">
+                </div>
+
+                <div class="field">
                     <label for="edit_inventory_type">Inventory Type</label>
                     <input id="edit_inventory_type" type="text" value="{{ $generic ? 'General inventory' : 'Rice' }}" readonly>
                     <small class="muted">Inventory type is locked to preserve existing stock records.</small>
@@ -397,8 +477,8 @@
                         alt="{{ $product->name }}"
                         onerror="this.onerror=null;this.src='{{ asset('images/default-product.svg') }}';"
                     >
-                    <input id="edit_image" type="file" name="image" accept="image/jpeg,image/png,image/webp">
-                    <small class="muted">Optional. JPG, PNG, or WebP; maximum 2 MB.</small>
+                    <input id="edit_image" type="file" name="image" accept="image/*">
+                    <small class="muted">Optional. Any supported image format, up to 10 MB.</small>
                 </div>
 
                 @if ($generic)
@@ -469,7 +549,7 @@
                     </div>
                     <div class="field">
                         <label for="edit_profit_percentage">Target Profit (%)</label>
-                        <input id="edit_profit_percentage" type="number" name="profit_percentage" min="0" max="1000" step="0.01" value="{{ old('profit_percentage', $product->profit_percentage) }}">
+                        <input id="edit_profit_percentage" type="number" name="profit_percentage" min="0" max="1000" step="0.01" value="{{ old('profit_percentage', $product->profit_percentage ?? 15) }}">
                     </div>
                     <div class="field">
                         <label for="edit_low_stock_threshold_sacks">Low Stock Alert (Sacks)</label>

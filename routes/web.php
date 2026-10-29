@@ -1,30 +1,51 @@
 
 <?php
 
-use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AddressLookupController;
-use App\Http\Controllers\ProductController;
-use App\Http\Controllers\CartController;
+use App\Http\Controllers\AssistantController;
+use App\Http\Controllers\BundleController;
+use App\Http\Controllers\Admin\BundleController as AdminBundleController;
+use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\DeliveryProofController;
+use App\Http\Controllers\Admin\ExpenseController;
+use App\Http\Controllers\Admin\InventoryController;
+use App\Http\Controllers\Admin\ManualTransactionController;
+use App\Http\Controllers\Admin\OrderController;
+use App\Http\Controllers\Admin\ProductController as AdminProductController;
+use App\Http\Controllers\Admin\ProductReviewController as AdminProductReviewController;
+use App\Http\Controllers\Admin\ProfileController;
+use App\Http\Controllers\Admin\ProfitPricingController;
+use App\Http\Controllers\Admin\ReportController;
+use App\Http\Controllers\Admin\UserManagementController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\RegisterController;
-use App\Http\Controllers\Admin\ProductController as AdminProductController;
+use App\Http\Controllers\CartController;
 use App\Http\Controllers\CheckoutController;
-use App\Http\Controllers\Admin\InventoryController;
-use App\Http\Controllers\Admin\ExpenseController;
-use App\Http\Controllers\Admin\ProfileController;
-use App\Http\Controllers\Admin\OrderController;
-use App\Http\Controllers\Admin\DeliveryProofController;
-use App\Http\Controllers\Admin\ManualTransactionController;
+use App\Http\Controllers\Customer\OrderController as CustomerOrderController;
+use App\Http\Controllers\Customer\FavoriteController;
+use App\Http\Controllers\Customer\ProductReviewController as CustomerProductReviewController;
+use App\Http\Controllers\Customer\ProfileController as CustomerProfileController;
+use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\ProductController;
 use App\Http\Controllers\Rider\OrderController as RiderOrderController;
 use App\Http\Controllers\Rider\ProfileController as RiderProfileController;
-use App\Http\Controllers\Customer\ProfileController as CustomerProfileController;
-use App\Http\Controllers\Customer\OrderController as CustomerOrderController;
-use App\Http\Controllers\Admin\DashboardController;
-
+use App\Http\Middleware\AuditAdminActions;
+use Illuminate\Support\Facades\Route;
 
 // Store homepage
 Route::get('/', [ProductController::class, 'index'])
     ->name('home');
+
+Route::post('/assistant/message', AssistantController::class)
+    ->middleware(['auth', 'admin', 'throttle:20,1'])
+    ->name('assistant.message');
+
+Route::get('/bundles', [BundleController::class, 'index'])
+    ->name('bundles.index');
+
+Route::middleware(['auth', 'customer'])->post('/bundles/{bundle}/add-to-cart', [BundleController::class, 'addToCart'])
+    ->whereNumber('bundle')
+    ->name('bundles.add-to-cart');
 
 // Guest login and registration
 Route::middleware('guest')->group(function () {
@@ -48,6 +69,18 @@ Route::post('/logout', [LoginController::class, 'logout'])
     ->middleware('auth')
     ->name('logout');
 
+Route::middleware('auth')->group(function () {
+    Route::get('/notifications', [NotificationController::class, 'index'])
+        ->name('notifications.index');
+
+    Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead'])
+        ->name('notifications.read-all');
+
+    Route::post('/notifications/{notification}/read', [NotificationController::class, 'markRead'])
+        ->whereUuid('notification')
+        ->name('notifications.read');
+});
+
 // Customer cart
 Route::get('/cart', [CartController::class, 'index'])
     ->name('cart.index');
@@ -62,7 +95,7 @@ Route::delete('/cart/remove/{product}', [CartController::class, 'remove'])
     ->name('cart.remove');
 
 // Customer checkout and confirmation
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'customer'])->group(function () {
     Route::get('/checkout', [CheckoutController::class, 'create'])
         ->name('checkout.create');
 
@@ -86,15 +119,14 @@ Route::middleware('auth')->group(function () {
         ->name('address.suggestions');
 });
 
-// Admin routes
-Route::middleware(['auth', 'admin'])
+// Admin and staff dashboard
+Route::middleware(['auth', 'admin-dashboard', AuditAdminActions::class])
     ->prefix('admin')
     ->name('admin.')
     ->group(function () {
         Route::get('/', [DashboardController::class, 'index'])
             ->name('dashboard');
 
-        // Manual transactions / walk-in sales
         Route::get('/manual-transactions', [
             ManualTransactionController::class,
             'index',
@@ -110,10 +142,51 @@ Route::middleware(['auth', 'admin'])
             'store',
         ])->name('manual-transactions.store');
 
+        Route::get('/profile', [ProfileController::class, 'edit'])
+            ->name('profile.edit');
+
+        Route::patch('/profile', [ProfileController::class, 'update'])
+            ->name('profile.update');
+
+        Route::put('/profile/password', [ProfileController::class, 'updatePassword'])
+            ->name('profile.password.update');
+
         Route::get('/manual-transactions/{order}/receipt', [
             ManualTransactionController::class,
             'receipt',
         ])->whereNumber('order')->name('manual-transactions.receipt');
+    });
+
+// Admin-only routes
+Route::middleware(['auth', 'admin', AuditAdminActions::class])
+    ->prefix('admin')
+    ->name('admin.')
+    ->group(function () {
+        Route::get('/users', [UserManagementController::class, 'index'])
+            ->name('users.index');
+
+        Route::get('/reviews', [AdminProductReviewController::class, 'index'])
+            ->name('reviews.index');
+
+        Route::get('/bundles', [AdminBundleController::class, 'index'])
+            ->name('bundles.index');
+
+        Route::post('/bundles', [AdminBundleController::class, 'store'])
+            ->name('bundles.store');
+
+        Route::patch('/reviews/{review}/approve', [AdminProductReviewController::class, 'approve'])
+            ->whereNumber('review')
+            ->name('reviews.approve');
+
+        Route::post('/users', [UserManagementController::class, 'store'])
+            ->name('users.store');
+
+        Route::patch('/users/{user}/role', [
+            UserManagementController::class,
+            'updateRole',
+        ])
+            ->whereNumber('user')
+            ->name('users.role.update');
 
         Route::get('/products', [AdminProductController::class, 'index'])
             ->name('products.index');
@@ -181,27 +254,30 @@ Route::middleware(['auth', 'admin'])
 
         // Profit and pricing
         Route::get('/profit-pricing', [
-            \App\Http\Controllers\Admin\ProfitPricingController::class,
+            ProfitPricingController::class,
             'index',
         ])->name('profit-pricing.index');
 
         // Reports
         Route::get('/reports', [
-            \App\Http\Controllers\Admin\ReportController::class,
+            ReportController::class,
             'index',
         ])->name('reports.index');
 
         Route::get('/reports/export', [
-            \App\Http\Controllers\Admin\ReportController::class,
+            ReportController::class,
             'export',
         ])->name('reports.export');
 
-        // Admin profile
-        Route::get('/profile', [ProfileController::class, 'edit'])
-            ->name('profile.edit');
+        Route::get('/reports/export/excel', [
+            ReportController::class,
+            'exportExcel',
+        ])->name('reports.export.excel');
 
-        Route::patch('/profile', [ProfileController::class, 'update'])
-            ->name('profile.update');
+        Route::get('/reports/export/pdf', [
+            ReportController::class,
+            'exportPdf',
+        ])->name('reports.export.pdf');
 
         // Orders
         Route::get('/orders', [OrderController::class, 'index'])
@@ -310,16 +386,16 @@ Route::middleware(['auth', 'rider'])
             ->whereNumber('order')
             ->name('orders.complete');
 
-            // Rider profile
-Route::get('/profile', [RiderProfileController::class, 'edit'])
-    ->name('profile.edit');
+        // Rider profile
+        Route::get('/profile', [RiderProfileController::class, 'edit'])
+            ->name('profile.edit');
 
-Route::patch('/profile', [RiderProfileController::class, 'update'])
-    ->name('profile.update');
-    }); 
+        Route::patch('/profile', [RiderProfileController::class, 'update'])
+            ->name('profile.update');
+    });
 
 // Customer profile
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'customer'])->group(function () {
     Route::get('/profile', [
         CustomerProfileController::class,
         'edit',
@@ -331,12 +407,35 @@ Route::middleware('auth')->group(function () {
     ])->name('customer.profile.update');
 });
 // Customer orders and tracking
-Route::get('/my-orders', [
-    CustomerOrderController::class,
-    'index',
-])->name('customer.orders.index');
+Route::middleware(['auth', 'customer'])->group(function () {
+    Route::get('/favorites', [FavoriteController::class, 'index'])
+        ->name('customer.favorites.index');
 
-Route::get('/my-orders/{order}', [
-    CustomerOrderController::class,
-    'show',
-])->whereNumber('order')->name('customer.orders.show');
+    Route::post('/favorites/{product}', [FavoriteController::class, 'store'])
+        ->whereNumber('product')
+        ->name('customer.favorites.store');
+
+    Route::delete('/favorites/{product}', [FavoriteController::class, 'destroy'])
+        ->whereNumber('product')
+        ->name('customer.favorites.destroy');
+
+    Route::get('/my-orders', [
+        CustomerOrderController::class,
+        'index',
+    ])->name('customer.orders.index');
+
+    Route::get('/my-orders/{order}', [
+        CustomerOrderController::class,
+        'show',
+    ])->whereNumber('order')->name('customer.orders.show');
+
+    Route::post('/my-orders/{order}/reorder', [
+        CustomerOrderController::class,
+        'reorder',
+    ])->whereNumber('order')->name('customer.orders.reorder');
+
+    Route::post('/my-orders/{order}/reviews/{product}', [
+        CustomerProductReviewController::class,
+        'store',
+    ])->whereNumber('order')->whereNumber('product')->name('customer.orders.reviews.store');
+});

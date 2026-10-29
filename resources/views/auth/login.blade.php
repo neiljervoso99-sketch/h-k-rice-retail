@@ -95,6 +95,31 @@
             text-align: center;
             text-decoration: none;
         }
+
+        @media (max-width: 480px) {
+            body {
+                padding: 14px;
+            }
+
+            .login-card {
+                padding: 24px 18px;
+                border-radius: 12px;
+            }
+
+            h1 {
+                font-size: 25px;
+            }
+
+            input[type="email"],
+            input[type="password"] {
+                min-height: 46px;
+                font-size: 16px;
+            }
+
+            button {
+                min-height: 46px;
+            }
+        }
     </style>
 </head>
 <body>

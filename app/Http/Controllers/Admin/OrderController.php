@@ -11,6 +11,8 @@ use App\Models\Product;
 use App\Models\ProductSellingUnit;
 use App\Models\User;
 use App\Support\OrderEmailNotifier;
+use App\Support\LowStockAlertNotifier;
+use App\Support\UserAlertNotifier;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -266,15 +268,36 @@ class OrderController extends Controller
 
             $lockedOrder->status = 'accepted';
             $lockedOrder->accepted_at = now();
+            $lockedOrder->processing_at = $lockedOrder->accepted_at;
             $lockedOrder->inventory_deducted_at = now();
             $lockedOrder->save();
         }, 3);
+
+        $order->items()
+            ->whereNotNull('product_id')
+            ->pluck('product_id')
+            ->unique()
+            ->each(function ($productId) {
+                $product = Product::find($productId);
+                if ($product) {
+                    LowStockAlertNotifier::check($product);
+                }
+            });
 
         // Send the email only after the transaction succeeds.
         OrderEmailNotifier::send(
             $order->fresh(),
             'accepted'
         );
+        $order->loadMissing('customer');
+        if ($order->customer) {
+            UserAlertNotifier::send(
+                $order->customer,
+                'Order accepted',
+                'Your order ' . $order->order_number . ' has been accepted.',
+                route('customer.orders.show', $order),
+            );
+        }
 
         return redirect()
             ->route('admin.orders.index')
@@ -304,6 +327,7 @@ class OrderController extends Controller
             }
 
             $lockedOrder->status = 'cancelled';
+            $lockedOrder->cancelled_at = now();
             $lockedOrder->save();
         }, 3);
 
@@ -312,6 +336,15 @@ class OrderController extends Controller
             $order->fresh(),
             'cancelled'
         );
+        $order->loadMissing('customer');
+        if ($order->customer) {
+            UserAlertNotifier::send(
+                $order->customer,
+                'Order cancelled',
+                'Your order ' . $order->order_number . ' has been cancelled.',
+                route('customer.orders.show', $order),
+            );
+        }
 
         return redirect()
             ->route('admin.orders.index')
@@ -339,6 +372,7 @@ class OrderController extends Controller
 
             $lockedOrder->status = 'completed';
             $lockedOrder->completed_at = now();
+            $lockedOrder->delivered_at = $lockedOrder->completed_at;
             $lockedOrder->save();
         }, 3);
 
@@ -347,6 +381,15 @@ class OrderController extends Controller
             $order->fresh(),
             'completed'
         );
+        $order->loadMissing('customer');
+        if ($order->customer) {
+            UserAlertNotifier::send(
+                $order->customer,
+                'Order completed',
+                'Your order ' . $order->order_number . ' has been completed.',
+                route('customer.orders.show', $order),
+            );
+        }
 
         return redirect()
             ->route('admin.orders.index')
@@ -389,6 +432,7 @@ class OrderController extends Controller
             $lockedOrder->rider_id = $rider->id;
             $lockedOrder->assigned_by = $request->user()->id;
             $lockedOrder->assigned_at = now();
+            $lockedOrder->shipped_at = $lockedOrder->assigned_at;
             $lockedOrder->save();
         }, 3);
 
@@ -397,6 +441,21 @@ class OrderController extends Controller
             $order->fresh(),
             'rider_assigned',
             $rider->name
+        );
+        $order->loadMissing('customer');
+        if ($order->customer) {
+            UserAlertNotifier::send(
+                $order->customer,
+                'Rider assigned',
+                $rider->name . ' has been assigned to order ' . $order->order_number . '.',
+                route('customer.orders.show', $order),
+            );
+        }
+        UserAlertNotifier::send(
+            $rider,
+            'New delivery assignment',
+            'Order ' . $order->order_number . ' has been assigned to you.',
+            route('rider.orders.show', $order),
         );
 
         return redirect()
@@ -499,6 +558,16 @@ class OrderController extends Controller
             $lockedOrder->save();
         }, 3);
 
+        $order->loadMissing('customer');
+        if ($order->customer) {
+            UserAlertNotifier::send(
+                $order->customer,
+                'Payment verified',
+                'The GCash payment for order ' . $order->order_number . ' was verified.',
+                route('customer.orders.show', $order),
+            );
+        }
+
         return redirect()
             ->route('admin.orders.show', $order)
             ->with('success', 'GCash payment verified successfully.');
@@ -546,6 +615,16 @@ class OrderController extends Controller
             $lockedOrder->payment_status = 'rejected';
             $lockedOrder->save();
         }, 3);
+
+        $order->loadMissing('customer');
+        if ($order->customer) {
+            UserAlertNotifier::send(
+                $order->customer,
+                'Payment needs attention',
+                'The GCash payment for order ' . $order->order_number . ' was rejected.',
+                route('customer.orders.show', $order),
+            );
+        }
 
         return redirect()
             ->route('admin.orders.show', $order)

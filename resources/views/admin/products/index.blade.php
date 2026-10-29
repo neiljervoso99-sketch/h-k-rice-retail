@@ -1640,6 +1640,138 @@
             padding: 10px;
         }
     }
+
+    :root[data-theme="dark"] .products-page {
+        --products-border: #293149;
+        color: #ecf1ff;
+    }
+
+    :root[data-theme="dark"] .products-page .page-heading,
+    :root[data-theme="dark"] .products-page .products-panel,
+    :root[data-theme="dark"] .products-page .inventory-card,
+    :root[data-theme="dark"] .products-page .product-edit-form,
+    :root[data-theme="dark"] .products-page .product-qr-section {
+        border-color: var(--products-border);
+        background: #131b2e;
+        color: #ecf1ff;
+    }
+
+    :root[data-theme="dark"] .products-page .page-heading h1,
+    :root[data-theme="dark"] .products-page .panel-heading h2,
+    :root[data-theme="dark"] .products-page .inventory-card strong,
+    :root[data-theme="dark"] .products-page .product-edit-form h3,
+    :root[data-theme="dark"] .products-page .product-qr-section h4,
+    :root[data-theme="dark"] .products-page .products-table .product-name {
+        color: #ecf1ff;
+    }
+
+    :root[data-theme="dark"] .products-page .page-heading p,
+    :root[data-theme="dark"] .products-page .inventory-card span,
+    :root[data-theme="dark"] .products-page .muted,
+    :root[data-theme="dark"] .products-page #filterResultCount,
+    :root[data-theme="dark"] .products-page .products-table .muted {
+        color: #aab6cb;
+    }
+
+    :root[data-theme="dark"] .products-page .product-count {
+        background: #1a2b43;
+        color: #b8d7ff;
+    }
+
+    :root[data-theme="dark"] .products-page .product-filters,
+    :root[data-theme="dark"] .products-page .bulk-actions,
+    :root[data-theme="dark"] .products-page .edit-form-row > td,
+    :root[data-theme="dark"] .products-page .edit-form-row {
+        border-color: var(--products-border);
+        background: #11192a;
+        color: #ecf1ff;
+    }
+
+    :root[data-theme="dark"] .products-page .product-filters input,
+    :root[data-theme="dark"] .products-page .product-filters select,
+    :root[data-theme="dark"] .products-page .field input:not([type="checkbox"]),
+    :root[data-theme="dark"] .products-page .field select,
+    :root[data-theme="dark"] .products-page .field textarea,
+    :root[data-theme="dark"] .products-page .bulk-actions select {
+        border-color: #3a465e;
+        background: #11192a;
+        color: #ecf1ff;
+    }
+
+    :root[data-theme="dark"] .products-page .field label {
+        color: #d3dbed;
+    }
+
+    :root[data-theme="dark"] .products-page .field input::placeholder,
+    :root[data-theme="dark"] .products-page .field textarea::placeholder,
+    :root[data-theme="dark"] .products-page .product-filters input::placeholder {
+        color: #9aa5bd;
+    }
+
+    :root[data-theme="dark"] .products-page .table-wrap.products-table-wrapper,
+    :root[data-theme="dark"] .products-page table.products-table {
+        border-color: var(--products-border);
+        background: #11192a;
+    }
+
+    :root[data-theme="dark"] .products-page .products-table th,
+    :root[data-theme="dark"] .products-page .products-table th.actions-cell {
+        border-bottom-color: var(--products-border);
+        background: #1a2439;
+        color: #d3dbed;
+    }
+
+    :root[data-theme="dark"] .products-page .products-table td,
+    :root[data-theme="dark"] .products-page .products-table td.actions-cell {
+        border-bottom-color: var(--products-border);
+        background: #11192a;
+        color: #d3dbed;
+        box-shadow: -5px 0 8px rgba(0, 0, 0, .14);
+    }
+
+    :root[data-theme="dark"] .products-page .products-table tbody tr.product-data-row:hover td {
+        background: #1a2439;
+    }
+
+    :root[data-theme="dark"] .products-page .products-table .product-image,
+    :root[data-theme="dark"] .products-page .products-table .product-image-placeholder {
+        border-color: var(--products-border);
+        background: #1a2439;
+        color: #aab6cb;
+    }
+
+    :root[data-theme="dark"] .products-page .product-edit-form h3,
+    :root[data-theme="dark"] .products-page .product-qr-section,
+    :root[data-theme="dark"] .products-page .selling-unit-row,
+    :root[data-theme="dark"] .products-page .edit-actions {
+        border-color: var(--products-border);
+    }
+
+    :root[data-theme="dark"] .products-page .button-edit,
+    :root[data-theme="dark"] .products-page .button-cancel {
+        border-color: #3a465e;
+        background: #1a2439;
+        color: #d3dbed;
+    }
+
+    :root[data-theme="dark"] .products-page .button-remove {
+        border-color: #653b42;
+        background: #332027;
+        color: #ffb4ad;
+    }
+
+    :root[data-theme="dark"] .products-page .calculator-result {
+        border-color: #35533e;
+        background: #172a22;
+        color: #c9ead0;
+    }
+
+    :root[data-theme="dark"] .products-page .notice {
+        border-color: #35533e;
+        background: #172a22;
+        color: #c9ead0;
+    }
+
 </style>
 
 <div class="products-page">
@@ -2058,11 +2190,11 @@
                                                     class="edit-image-input"
                                                     type="file"
                                                     name="image"
-                                                    accept="image/jpeg,image/png,image/webp"
+                                                    accept="image/*"
                                                 >
 
                                                 <small class="muted">
-                                                    Optional. Upload a new image to replace the current one. Maximum 2 MB.
+                                                    Optional. Upload any supported image format to replace the current one. Maximum 10 MB.
                                                 </small>
                                             </div>
 
@@ -2196,7 +2328,7 @@
                                                         min="0"
                                                         max="100"
                                                         step="0.01"
-                                                        value="{{ $useOldProductInput ? old('profit_percentage', $product->profit_percentage) : $product->profit_percentage }}"
+                                                        value="{{ $useOldProductInput ? old('profit_percentage', $product->profit_percentage ?? 15) : ($product->profit_percentage ?? 15) }}"
                                                     >
                                                 </div>
 

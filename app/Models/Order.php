@@ -34,6 +34,10 @@ class Order extends Model
         'admin_notes',
         'accepted_at',
         'completed_at',
+        'processing_at',
+        'shipped_at',
+        'delivered_at',
+        'cancelled_at',
         'rider_id',
         'assigned_by',
         'assigned_at',
@@ -57,11 +61,26 @@ class Order extends Model
             'receipt_requested' => 'boolean',
             'accepted_at' => 'datetime',
             'completed_at' => 'datetime',
+            'processing_at' => 'datetime',
+            'shipped_at' => 'datetime',
+            'delivered_at' => 'datetime',
+            'cancelled_at' => 'datetime',
             'assigned_at' => 'datetime',
             'cash_collected_at' => 'datetime',
             'inventory_deducted_at' => 'datetime',
             'delivery_proof_uploaded_at' => 'datetime',
         ];
+    }
+
+    public function getDisplayStatusAttribute(): string
+    {
+        return match ($this->status) {
+            'pending' => 'Pending',
+            'accepted' => $this->shipped_at ? 'Shipped' : 'Processing',
+            'completed' => 'Delivered',
+            'cancelled' => 'Cancelled',
+            default => str($this->status)->replace('_', ' ')->title()->toString(),
+        };
     }
 
     public function customer(): BelongsTo

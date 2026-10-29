@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>My Orders | H&K Consumer Goods Store</title>
+    @vite('resources/js/app.js')
 
     <style>
         * {
@@ -123,11 +125,29 @@
             .order {
                 padding: 14px;
             }
+
+            .home-button,
+            .button {
+                min-height: 44px;
+                display: inline-flex;
+                align-items: center;
+            }
+
+            .top {
+                align-items: stretch;
+            }
+
+            .container {
+                overflow-wrap: anywhere;
+            }
         }
     </style>
 </head>
 
 <body>
+<div class="notification-floating">
+    @include('components.notification-center')
+</div>
 <div class="container">
 
     <a href="{{ url('/') }}" class="home-button">
@@ -149,7 +169,7 @@
 
                 <div>
                     <span class="status">
-                        {{ str_replace('_', ' ', $order->status ?? 'pending') }}
+                        {{ $order->display_status }}
                     </span>
                 </div>
             </div>
@@ -163,6 +183,15 @@
                 <strong>Total:</strong>
                 ₱{{ number_format((float) ($order->total ?? $order->total_amount ?? 0), 2) }}
             </p>
+
+            @if ($order->processing_at || $order->shipped_at || $order->delivered_at || $order->cancelled_at)
+                <p class="muted">
+                    @if ($order->processing_at) Processing: {{ $order->processing_at->format('M d, Y h:i A') }} @endif
+                    @if ($order->shipped_at) · Shipped: {{ $order->shipped_at->format('M d, Y h:i A') }} @endif
+                    @if ($order->delivered_at) · Delivered: {{ $order->delivered_at->format('M d, Y h:i A') }} @endif
+                    @if ($order->cancelled_at) · Cancelled: {{ $order->cancelled_at->format('M d, Y h:i A') }} @endif
+                </p>
+            @endif
 
             <a class="button"
                href="{{ route('customer.orders.show', $order->id) }}">

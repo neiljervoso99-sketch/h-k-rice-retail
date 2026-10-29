@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Models\ActivityLog;
+use App\Models\LoginHistory;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -45,9 +47,17 @@ class LoginController extends Controller
         $request->session()->regenerate();
 
         $user = Auth::user();
+        $loginHistory = LoginHistory::create([
+            'user_id' => $user->id,
+            'ip_address' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+            'logged_in_at' => now(),
+        ]);
+        $request->session()->put('login_history_id', $loginHistory->id);
+        ActivityLog::record($request, 'auth.login');
 
-        // Admins and riders always go to their own dashboards.
-        if ($user->isAdmin() || $user->isRider()) {
+        // Admins, staff, and riders always go to their own dashboards.
+        if ($user->isAdmin() || $user->isStaff() || $user->isRider()) {
             return redirect()->route(
                 $this->dashboardRoute($user)
             );
@@ -85,6 +95,10 @@ class LoginController extends Controller
             return 'rider.dashboard';
         }
 
+        if ($user->isStaff()) {
+            return 'admin.dashboard';
+        }
+
         return 'home';
     }
 
@@ -93,6 +107,17 @@ class LoginController extends Controller
      */
     public function logout(Request $request)
     {
+        ActivityLog::record($request, 'auth.logout');
+
+        $loginHistoryId = $request->session()->pull('login_history_id');
+        if ($loginHistoryId) {
+            LoginHistory::query()
+                ->where('id', $loginHistoryId)
+                ->where('user_id', $request->user()->id)
+                ->whereNull('logged_out_at')
+                ->update(['logged_out_at' => now()]);
+        }
+
         Auth::logout();
 
         $request->session()->invalidate();

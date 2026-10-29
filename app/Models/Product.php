@@ -12,6 +12,8 @@ class Product extends Model
         'brand',
         'rice_type',
         'category',
+        'variant_size',
+        'variant_color',
         'description',
         'price_per_kg',
         'price_per_sack',
@@ -34,6 +36,13 @@ class Product extends Model
         'stock_base_quantity',
         'unit_conversion_factor',
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (Product $product) {
+            $product->profit_percentage ??= 15;
+        });
+    }
 
     protected function casts(): array
     {
@@ -63,5 +72,10 @@ class Product extends Model
     public function sellingUnits(): HasMany
     {
         return $this->hasMany(ProductSellingUnit::class);
+    }
+
+    public function reviews(): HasMany
+    {
+        return $this->hasMany(ProductReview::class);
     }
 }

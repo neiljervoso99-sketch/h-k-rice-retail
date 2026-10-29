@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Order Details | H&K Consumer Goods Store</title>
+    @vite('resources/js/app.js')
 
     <style>
         * {
@@ -184,13 +186,25 @@
             }
 
             .button {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                min-height: 44px;
                 margin-bottom: 8px;
+            }
+
+            .info-row,
+            .total-row {
+                overflow-wrap: anywhere;
             }
         }
     </style>
 </head>
 
 <body>
+<div class="notification-floating">
+    @include('components.notification-center')
+</div>
 <div class="container">
 
     <div>
@@ -219,7 +233,30 @@
             </div>
 
             <span class="status">
-                {{ str_replace('_', ' ', $order->status ?? 'pending') }}
+                {{ $order->display_status }}
+            </span>
+        </div>
+
+        @php
+            $trackingStages = [
+                ['label' => 'Pending', 'at' => $order->created_at],
+                ['label' => 'Processing', 'at' => $order->processing_at],
+                ['label' => 'Shipped', 'at' => $order->shipped_at],
+                ['label' => 'Delivered', 'at' => $order->delivered_at],
+            ];
+        @endphp
+
+        <div class="info-row">
+            <span class="label">Order timeline</span>
+            <span class="value">
+                @foreach ($trackingStages as $stage)
+                    <span style="display:block;">
+                        {{ $stage['label'] }}: {{ $stage['at']?->format('M d, Y h:i A') ?? 'Not yet' }}
+                    </span>
+                @endforeach
+                @if ($order->cancelled_at)
+                    <span style="display:block;">Cancelled: {{ $order->cancelled_at->format('M d, Y h:i A') }}</span>
+                @endif
             </span>
         </div>
     </div>

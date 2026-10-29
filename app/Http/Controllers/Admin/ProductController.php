@@ -3,12 +3,11 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\ProductSellingUnit;
-use App\Models\OrderItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -35,7 +34,7 @@ class ProductController extends Controller
                     $rice->whereNull('inventory_type')
                         ->orWhere('inventory_type', '!=', 'generic');
                 })
-                ->whereColumn('stock_kg', '<=', 'low_stock_threshold');
+                    ->whereColumn('stock_kg', '<=', 'low_stock_threshold');
             })
             ->orWhere(function ($generic) {
                 $generic->where('is_active', true)
@@ -54,7 +53,7 @@ class ProductController extends Controller
                     $rice->whereNull('inventory_type')
                         ->orWhere('inventory_type', '!=', 'generic');
                 })
-                ->where('stock_kg', '<=', 0);
+                    ->where('stock_kg', '<=', 0);
             })
             ->orWhere(function ($generic) {
                 $generic->where('is_active', true)
@@ -85,6 +84,19 @@ class ProductController extends Controller
 
     public function store(Request $request)
     {
+        $category = is_string($request->input('category'))
+            ? trim($request->input('category'))
+            : '';
+        $riceType = is_string($request->input('rice_type'))
+            ? trim($request->input('rice_type'))
+            : '';
+        $isRiceProduct = preg_match('/\brice\b/i', $category) === 1
+            || $riceType !== '';
+
+        $request->merge([
+            'inventory_type' => $isRiceProduct ? 'rice' : 'generic',
+        ]);
+
         $validated = $request->validate([
             'inventory_type' => [
                 'required',
@@ -94,6 +106,8 @@ class ProductController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'brand' => ['nullable', 'string', 'max:255'],
             'category' => ['nullable', 'string', 'max:255'],
+            'variant_size' => ['nullable', 'string', 'max:80'],
+            'variant_color' => ['nullable', 'string', 'max:80'],
             'description' => ['nullable', 'string'],
             'rice_type' => ['nullable', 'string', 'max:255'],
 
@@ -143,9 +157,9 @@ class ProductController extends Controller
             ],
 
             'selling_units.*.cost_price' => [
-                'nullable',
+                'required_if:inventory_type,generic',
                 'numeric',
-                'min:0',
+                'gt:0',
                 'max:9999999.99',
             ],
 
@@ -174,9 +188,9 @@ class ProductController extends Controller
             ],
 
             'cost_per_sack' => [
-                'nullable',
+                'required_if:inventory_type,rice',
                 'numeric',
-                'min:0',
+                'gt:0',
                 'max:9999999.99',
             ],
 
@@ -204,12 +218,13 @@ class ProductController extends Controller
             'image' => [
                 'nullable',
                 'image',
-                'mimes:jpg,jpeg,png,webp',
-                'max:2048',
+                'max:10240',
             ],
 
             'is_active' => ['required', 'boolean'],
         ]);
+
+        $validated['profit_percentage'] = $validated['profit_percentage'] ?? 15;
 
         $isRice = $validated['inventory_type'] === 'rice';
 
@@ -261,11 +276,10 @@ class ProductController extends Controller
                 }
             }
 
-            if (!$hasBaseUnit) {
+            if (! $hasBaseUnit) {
                 throw ValidationException::withMessages([
-                    'selling_units' =>
-                        "Add '{$baseUnit}' as a selling unit with conversion factor 1. "
-                        . 'This is required so customers can buy using the base unit.',
+                    'selling_units' => "Add '{$baseUnit}' as a selling unit with conversion factor 1. "
+                        .'This is required so customers can buy using the base unit.',
                 ]);
             }
 
@@ -314,7 +328,7 @@ class ProductController extends Controller
             ->route('admin.products.index')
             ->with(
                 'success',
-                $validated['name'] . ' created successfully.'
+                $validated['name'].' created successfully.'
             );
     }
 
@@ -325,6 +339,8 @@ class ProductController extends Controller
         if ($isGeneric) {
             $validated = $request->validate([
                 'name' => ['required', 'string', 'max:255'],
+                'variant_size' => ['nullable', 'string', 'max:80'],
+                'variant_color' => ['nullable', 'string', 'max:80'],
                 'description' => ['nullable', 'string'],
                 'is_active' => ['sometimes', 'boolean'],
                 'price_per_unit' => [
@@ -399,17 +415,16 @@ class ProductController extends Controller
                 'image' => [
                     'nullable',
                     'image',
-                    'mimes:jpg,jpeg,png,webp',
-                    'max:2048',
+                    'max:10240',
                 ],
                 'price_confirmed' => ['sometimes', 'boolean'],
                 '_product_id' => [
-                    'required', 'integer', 'in:' . $product->id,
+                    'required', 'integer', 'in:'.$product->id,
                 ],
             ]);
 
             $updates = [];
-            foreach (['name', 'description', 'is_active'] as $field) {
+            foreach (['name', 'variant_size', 'variant_color', 'description', 'is_active'] as $field) {
                 if (array_key_exists($field, $validated)) {
                     $updates[$field] = $validated[$field];
                 }
@@ -440,7 +455,7 @@ class ProductController extends Controller
                 )->first(function ($unit) use ($baseUnitName) {
                     return strtolower(trim($unit['unit_name']))
                         === $baseUnitName
-                        && !empty($unit['is_active']);
+                        && ! empty($unit['is_active']);
                 });
                 $unitPrice = $submittedBaseUnit['selling_price']
                     ?? $updates['price_per_unit']
@@ -454,8 +469,7 @@ class ProductController extends Controller
                     )
                 ) {
                     throw ValidationException::withMessages([
-                        'price_confirmed' =>
-                            'Enter a valid unit price before confirming.',
+                        'price_confirmed' => 'Enter a valid unit price before confirming.',
                     ]);
                 }
 
@@ -479,8 +493,7 @@ class ProductController extends Controller
 
                     if (in_array($unitName, $unitNames, true)) {
                         throw ValidationException::withMessages([
-                            "selling_units.$index.unit_name" =>
-                                'Selling unit names must be unique.',
+                            "selling_units.$index.unit_name" => 'Selling unit names must be unique.',
                         ]);
                     }
 
@@ -488,17 +501,16 @@ class ProductController extends Controller
 
                     if (
                         $unitName === $baseUnit
-                        && !empty($unit['is_active'])
+                        && ! empty($unit['is_active'])
                         && abs((float) $unit['conversion_factor'] - 1.0) < 0.000001
                     ) {
                         $hasActiveBaseUnit = true;
                     }
                 }
 
-                if (!$hasActiveBaseUnit) {
+                if (! $hasActiveBaseUnit) {
                     throw ValidationException::withMessages([
-                        'selling_units' =>
-                            "Keep '{$baseUnit}' active with conversion factor 1.",
+                        'selling_units' => "Keep '{$baseUnit}' active with conversion factor 1.",
                     ]);
                 }
             }
@@ -510,7 +522,7 @@ class ProductController extends Controller
             ) {
                 $product->update($updates);
 
-                if (!array_key_exists('selling_units', $validated)) {
+                if (! array_key_exists('selling_units', $validated)) {
                     return;
                 }
 
@@ -528,13 +540,12 @@ class ProductController extends Controller
                     $unitName = strtolower(trim($unitData['unit_name']));
                     $unit = null;
 
-                    if (!empty($unitData['id'])) {
+                    if (! empty($unitData['id'])) {
                         $unit = $existingUnits->get((int) $unitData['id']);
 
-                        if (!$unit) {
+                        if (! $unit) {
                             throw ValidationException::withMessages([
-                                'selling_units' =>
-                                    'A selling unit does not belong to this product.',
+                                'selling_units' => 'A selling unit does not belong to this product.',
                             ]);
                         }
 
@@ -544,11 +555,11 @@ class ProductController extends Controller
                             $unitName,
                             $submittedIds
                         ) {
-                            return !in_array($existing->id, $submittedIds, true)
+                            return ! in_array($existing->id, $submittedIds, true)
                                 && strtolower($existing->unit_name) === $unitName;
                         });
 
-                        if (!$unit) {
+                        if (! $unit) {
                             $unit = new ProductSellingUnit([
                                 'product_id' => $product->id,
                             ]);
@@ -586,6 +597,8 @@ class ProductController extends Controller
         } else {
             $validated = $request->validate([
                 'name' => ['required', 'string', 'max:255'],
+                'variant_size' => ['nullable', 'string', 'max:80'],
+                'variant_color' => ['nullable', 'string', 'max:80'],
                 'description' => ['nullable', 'string'],
                 'is_active' => ['sometimes', 'boolean'],
                 'price_per_kg' => [
@@ -612,12 +625,11 @@ class ProductController extends Controller
                 'image' => [
                     'nullable',
                     'image',
-                    'mimes:jpg,jpeg,png,webp',
-                    'max:2048',
+                    'max:10240',
                 ],
                 'price_confirmed' => ['sometimes', 'boolean'],
                 '_product_id' => [
-                    'required', 'integer', 'in:' . $product->id,
+                    'required', 'integer', 'in:'.$product->id,
                 ],
             ]);
 
@@ -637,7 +649,7 @@ class ProductController extends Controller
             }
 
             $updates = [];
-            foreach (['name', 'description', 'is_active'] as $field) {
+            foreach (['name', 'variant_size', 'variant_color', 'description', 'is_active'] as $field) {
                 if (array_key_exists($field, $validated)) {
                     $updates[$field] = $validated[$field];
                 }
@@ -661,8 +673,7 @@ class ProductController extends Controller
 
                 if ($thresholdKg > 1000000) {
                     throw ValidationException::withMessages([
-                        'low_stock_threshold_sacks' =>
-                            'The converted threshold cannot exceed 1,000,000 kg.',
+                        'low_stock_threshold_sacks' => 'The converted threshold cannot exceed 1,000,000 kg.',
                     ]);
                 }
 
@@ -679,8 +690,7 @@ class ProductController extends Controller
                     && ($pricePerSack === null || (float) $pricePerSack <= 0)
                 ) {
                     throw ValidationException::withMessages([
-                        'price_confirmed' =>
-                            'Enter at least one valid price before confirming.',
+                        'price_confirmed' => 'Enter at least one valid price before confirming.',
                     ]);
                 }
 
@@ -697,7 +707,7 @@ class ProductController extends Controller
 
         return redirect()
             ->route('admin.products.index')
-            ->with('success', $product->name . ' updated successfully.');
+            ->with('success', $product->name.' updated successfully.');
     }
 
     public function destroy(Product $product)
@@ -714,7 +724,7 @@ class ProductController extends Controller
                 ->route('admin.dashboard')
                 ->with(
                     'success',
-                    $product->name .
+                    $product->name.
                     ' was hidden from the store because it has order history. Past orders were preserved.'
                 );
         }
@@ -724,7 +734,7 @@ class ProductController extends Controller
 
         return redirect()
             ->route('admin.dashboard')
-            ->with('success', $name . ' was permanently deleted.');
+            ->with('success', $name.' was permanently deleted.');
     }
 
     public function bulk(Request $request)
@@ -733,10 +743,10 @@ class ProductController extends Controller
             'action' => ['required', Rule::in(['activate', 'deactivate', 'remove'])],
             'product_ids' => ['required', 'array', 'min:1', 'max:100'],
             'product_ids.*' => [
-            'required',
-            'integer',
-            'distinct',
-            'exists:products,id',
+                'required',
+                'integer',
+                'distinct',
+                'exists:products,id',
             ],
         ]);
 
@@ -751,31 +761,34 @@ class ProductController extends Controller
             &$updated
         ) {
             $products = Product::query()
-            ->whereIn('id', $validated['product_ids'])
-            ->lockForUpdate()
-            ->get();
+                ->whereIn('id', $validated['product_ids'])
+                ->lockForUpdate()
+                ->get();
 
             foreach ($products as $product) {
-            if ($validated['action'] === 'activate') {
-                $product->update(['is_active' => true]);
-                $updated++;
-                continue;
-            }
+                if ($validated['action'] === 'activate') {
+                    $product->update(['is_active' => true]);
+                    $updated++;
 
-            if ($validated['action'] === 'deactivate') {
-                $product->update(['is_active' => false]);
-                $updated++;
-                continue;
-            }
+                    continue;
+                }
 
-            if (OrderItem::where('product_id', $product->id)->exists()) {
-                $product->update(['is_active' => false]);
-                $hidden++;
-                continue;
-            }
+                if ($validated['action'] === 'deactivate') {
+                    $product->update(['is_active' => false]);
+                    $updated++;
 
-            $product->delete();
-            $removed++;
+                    continue;
+                }
+
+                if (OrderItem::where('product_id', $product->id)->exists()) {
+                    $product->update(['is_active' => false]);
+                    $hidden++;
+
+                    continue;
+                }
+
+                $product->delete();
+                $removed++;
             }
         });
 
@@ -783,7 +796,7 @@ class ProductController extends Controller
             'activate' => "$updated product(s) activated.",
             'deactivate' => "$updated product(s) deactivated.",
             default => "$removed product(s) permanently removed; "
-            . "$hidden product(s) with order history were deactivated.",
+            ."$hidden product(s) with order history were deactivated.",
         };
 
         return redirect()
@@ -798,7 +811,7 @@ class ProductController extends Controller
                 'required',
                 'string',
                 'max:255',
-                'unique:products,qr_code,' . $product->id,
+                'unique:products,qr_code,'.$product->id,
             ],
         ]);
 
@@ -808,7 +821,7 @@ class ProductController extends Controller
 
         return back()->with(
             'success',
-            'QR code updated for ' . $product->name . '.'
+            'QR code updated for '.$product->name.'.'
         );
     }
 }

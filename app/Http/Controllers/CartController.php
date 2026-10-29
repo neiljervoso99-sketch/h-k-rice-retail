@@ -203,6 +203,14 @@ class CartController extends Controller
             ->get()
             ->keyBy('id');
 
+        $cartProductIds = array_map('intval', array_keys($cart));
+        $hasRiceInCart = $products->contains(
+            fn (Product $product) => !$this->isGeneric($product)
+        );
+        $suggestedItems = $cartProductIds === []
+            ? collect()
+            : $this->cartAddOnSuggestions($cartProductIds, $hasRiceInCart);
+
         $items = [];
         $total = 0.0;
         $needsPriceConfirmation = false;
@@ -285,8 +293,87 @@ class CartController extends Controller
             'total',
             'needsPriceConfirmation',
             'hasUnavailableStock',
-            'canProceed'
+            'canProceed',
+            'suggestedItems'
         ));
+    }
+
+    private function cartAddOnSuggestions(array $cartProductIds, bool $hasRiceInCart)
+    {
+        $products = Product::query()
+            ->where('is_active', true)
+            ->whereNotIn('id', $cartProductIds)
+            ->with(['sellingUnits' => fn ($query) => $query->where('is_active', true)])
+            ->get();
+
+        $suggestions = $products->map(function (Product $product) {
+            if (!$product->price_confirmed) {
+                return null;
+            }
+
+            if ($this->isGeneric($product)) {
+                $stock = (float) $product->stock_base_quantity;
+                $units = $product->sellingUnits
+                    ->filter(fn (ProductSellingUnit $unit) =>
+                        (float) $unit->conversion_factor > 0
+                        && (float) $unit->selling_price > 0
+                        && (float) $unit->conversion_factor <= $stock
+                    );
+
+                $baseUnit = strtolower(trim(
+                    (string) ($product->base_unit ?: $product->stock_unit ?: 'piece')
+                ));
+                $unit = $units->first(fn (ProductSellingUnit $candidate) =>
+                    strtolower($candidate->unit_name) === $baseUnit
+                ) ?? $units->sortBy('conversion_factor')->first();
+
+                if (!$unit) {
+                    return null;
+                }
+
+                return [
+                    'product' => $product,
+                    'unit' => $unit->unit_name,
+                    'quantity' => 1,
+                    'price' => (float) $unit->selling_price,
+                    'stock_text' => number_format(
+                        $stock / (float) $unit->conversion_factor,
+                        2
+                    ) . ' ' . $unit->unit_name . ' available',
+                    'is_generic' => true,
+                ];
+            }
+
+            $price = (float) $product->price_per_kg;
+            $stock = (float) $product->stock_kg;
+
+            if ($price <= 0 || $stock < self::MINIMUM_KG_ORDER) {
+                return null;
+            }
+
+            return [
+                'product' => $product,
+                'unit' => 'kg',
+                'quantity' => self::MINIMUM_KG_ORDER,
+                'price' => $price,
+                'stock_text' => number_format($stock, 2) . ' kg available',
+                'is_generic' => false,
+            ];
+        })->filter();
+
+        return $suggestions
+            ->sortBy(function (array $item) use ($hasRiceInCart): int {
+                $product = $item['product'];
+                $text = strtolower($product->name . ' ' . $product->category . ' ' . $product->description);
+                $groceryScore = preg_match('/egg|oil|sugar|coffee|noodle|canned|grocery|sardine/', $text) ? 0 : 1;
+                $genericScore = $item['is_generic'] ? 0 : 1;
+
+                return $hasRiceInCart
+                    ? ($genericScore * 10 + $groceryScore)
+                    : ($groceryScore * 10 + $genericScore);
+            })
+            ->take(4)
+            ->values();
     }
 
     public function add(Request $request, Product $product)

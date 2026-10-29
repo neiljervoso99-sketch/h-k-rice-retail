@@ -4,7 +4,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Track Order | H&K Consumer Goods Store</title>
+    @vite('resources/js/app.js')
 
     <style>
         * { box-sizing: border-box; }
@@ -102,10 +104,16 @@
         @media (max-width: 600px) {
             body { padding: 14px; }
             .card { padding: 17px; }
+            .detail { align-items: flex-start; gap: 8px; }
+            .detail span:last-child { max-width: 62%; }
+            .container { overflow-wrap: anywhere; }
         }
     </style>
 </head>
 <body>
+<div class="notification-floating">
+    @include('components.notification-center')
+</div>
 <div class="container">
     <p><a href="{{ route('customer.orders.index') }}">← Back to My Orders</a></p>
 
@@ -229,6 +237,28 @@
                         · {{ $item->quantity_kg }} kg
                     @endif
                 </p>
+
+                @if ($order->status === 'completed' && $item->product_id)
+                    @if (in_array($item->product_id, $reviewedProductIds, true))
+                        <p class="muted">Review submitted. Thanks for your feedback.</p>
+                    @else
+                        <form method="POST" action="{{ route('customer.orders.reviews.store', [$order, $item->product_id]) }}" enctype="multipart/form-data">
+                            @csrf
+                            <label for="rating-{{ $item->id }}">Your rating</label>
+                            <select id="rating-{{ $item->id }}" name="rating" required>
+                                <option value="">Choose stars</option>
+                                @for ($rating = 5; $rating >= 1; $rating--)
+                                    <option value="{{ $rating }}">{{ $rating }} {{ $rating === 1 ? 'star' : 'stars' }}</option>
+                                @endfor
+                            </select>
+                            <label for="review-{{ $item->id }}">Review (optional)</label>
+                            <textarea id="review-{{ $item->id }}" name="review" maxlength="1000" rows="3"></textarea>
+                            <label for="review-photo-{{ $item->id }}">Photo (optional)</label>
+                            <input id="review-photo-{{ $item->id }}" name="photo" type="file" accept="image/jpeg,image/png,image/webp">
+                            <button class="button" type="submit">Submit Review</button>
+                        </form>
+                    @endif
+                @endif
             </div>
         @empty
             <p class="muted">No order items found.</p>
@@ -283,6 +313,12 @@
             </p>
         @endif
     </section>
+
+    <form method="POST" action="{{ route('customer.orders.reorder', $order) }}">
+        @csrf
+        <button class="button" type="submit">Buy Again</button>
+    </form>
 </div>
+@include('components.smart-assistant')
 </body>
 </html>

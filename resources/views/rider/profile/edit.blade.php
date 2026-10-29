@@ -163,6 +163,22 @@
         .page-heading h2 {
             font-size: 23px;
         }
+
+        .profile-fields-grid input,
+        .profile-fields-grid select,
+        .profile-fields-grid textarea {
+            min-height: 44px;
+            font-size: 16px;
+        }
+
+        .profile-actions {
+            display: grid;
+            grid-template-columns: 1fr;
+        }
+
+        .profile-actions .profile-button {
+            width: 100%;
+        }
     }
 </style>
 @endpush

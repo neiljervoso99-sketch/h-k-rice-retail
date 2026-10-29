@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Checkout | H&amp;K Consumer Goods Store</title>
      <link rel="icon" type="image/png" href="{{ asset('images/HK_Consumer_Goods_Store_logo.png') }}?v=2">
 
@@ -203,16 +204,29 @@
             .grid { grid-template-columns: 1fr; }
             .full { grid-column: auto; }
             .actions { flex-direction: column; }
+            .actions > * { width: 100%; min-height: 44px; }
             .summary-row {
                 flex-direction: column;
                 gap: 2px;
             }
             .price { white-space: normal; }
+            input:not([type="checkbox"]):not([type="radio"]),
+            select,
+            textarea {
+                min-height: 44px;
+                font-size: 16px;
+            }
         }
     </style>
+    @vite('resources/js/app.js')
 </head>
 
 <body>
+@auth
+    <div class="notification-floating">
+        @include('components.notification-center')
+    </div>
+@endauth
 <header>
     <div class="container">
         <strong>H&amp;K Consumer Goods Store</strong> &nbsp; · &nbsp;
@@ -1028,5 +1042,6 @@
     updatePaymentFields();
 })();
 </script>
+@include('components.smart-assistant')
 </body>
 </html>

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\InventoryMovement;
 use App\Models\Product;
 use App\Models\ProductSellingUnit;
+use App\Support\LowStockAlertNotifier;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -35,6 +36,49 @@ class InventoryController extends Controller
                 <= (float) $product->low_stock_threshold;
         });
 
+        $salesByProduct = InventoryMovement::query()
+            ->where('movement_type', 'sale')
+            ->whereNotNull('product_id')
+            ->whereDate('movement_date', '>=', now()->subDays(29)->toDateString())
+            ->whereDate('movement_date', '<=', now()->toDateString())
+            ->get(['product_id', 'quantity', 'quantity_kg'])
+            ->groupBy('product_id')
+            ->map(fn ($movements) => $movements->sum(fn ($movement) =>
+                abs((float) ($movement->quantity ?? $movement->quantity_kg ?? 0))
+            ));
+
+        $stockForecasts = $products
+            ->filter(fn ($product) => $product->is_active)
+            ->map(function ($product) use ($salesByProduct) {
+                $generic = ($product->inventory_type ?? 'rice') === 'generic';
+                $stock = $generic
+                    ? (float) $product->stock_base_quantity
+                    : (float) $product->stock_kg;
+                $soldQuantity = (float) ($salesByProduct->get($product->id) ?? 0);
+
+                if ($soldQuantity <= 0) {
+                    return null;
+                }
+
+                $dailyAverage = $soldQuantity / 30;
+
+                return [
+                    'product' => $product,
+                    'unit' => $generic
+                        ? ($product->base_unit ?: $product->stock_unit ?: 'unit')
+                        : 'kg',
+                    'stock' => $stock,
+                    'sold_quantity' => $soldQuantity,
+                    'daily_average' => $dailyAverage,
+                    'days_remaining' => $dailyAverage > 0 ? $stock / $dailyAverage : null,
+                    'next_week_demand' => $dailyAverage * 7,
+                    'restock_gap' => max(0, ($dailyAverage * 7) - $stock),
+                ];
+            })
+            ->filter()
+            ->sortBy('days_remaining')
+            ->values();
+
         $movements = $this->movementQuery($filters)
             ->with(['product', 'creator'])
             ->orderByDesc('movement_date')
@@ -52,6 +96,7 @@ class InventoryController extends Controller
         return view('admin.inventory.index', compact(
             'products',
             'lowStockProducts',
+            'stockForecasts',
             'movements',
             'stockInMovements',
             'filters'
@@ -399,6 +444,11 @@ class InventoryController extends Controller
             InventoryMovement::create($movementData);
         });
 
+        $updatedProduct = Product::find($validated['product_id']);
+        if ($updatedProduct) {
+            LowStockAlertNotifier::check($updatedProduct);
+        }
+
         return redirect()
             ->route('admin.inventory.index')
             ->with('success', 'Stock received and inventory updated successfully.');
@@ -613,6 +663,11 @@ class InventoryController extends Controller
                 'created_by' => $request->user()->id,
             ]);
         });
+
+        $updatedProduct = Product::find($validated['product_id']);
+        if ($updatedProduct) {
+            LowStockAlertNotifier::check($updatedProduct);
+        }
 
         return redirect()
             ->route(

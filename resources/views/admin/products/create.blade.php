@@ -3,7 +3,52 @@
 @section('title', 'Add Product')
 
 @section('content')
-<div class="container">
+<style>
+    :root[data-theme="dark"] .product-create-page {
+        color: #ecf1ff;
+    }
+
+    :root[data-theme="dark"] .product-create-page h1,
+    :root[data-theme="dark"] .product-create-page h5 {
+        color: #ecf1ff;
+    }
+
+    :root[data-theme="dark"] .product-create-page .form-label,
+    :root[data-theme="dark"] .product-create-page label {
+        color: #d3dbed;
+    }
+
+    :root[data-theme="dark"] .product-create-page .text-muted {
+        color: #aab6cb !important;
+    }
+
+    :root[data-theme="dark"] .product-create-page .form-control,
+    :root[data-theme="dark"] .product-create-page input,
+    :root[data-theme="dark"] .product-create-page select,
+    :root[data-theme="dark"] .product-create-page textarea {
+        border-color: #3a465e;
+        background-color: #11192a;
+        color: #ecf1ff;
+    }
+
+    :root[data-theme="dark"] .product-create-page .card {
+        border-color: #293149;
+        background: #131b2e;
+        color: #ecf1ff;
+    }
+
+    :root[data-theme="dark"] .product-create-page hr {
+        border-color: #3a465e;
+    }
+
+    :root[data-theme="dark"] .product-create-page .alert-danger {
+        border-color: #653b42;
+        background: #332027;
+        color: #ffb4ad;
+    }
+</style>
+
+<div class="container product-create-page">
     <h1>Add Product</h1>
 
     @if ($errors->any())
@@ -21,17 +66,16 @@
           enctype="multipart/form-data">
         @csrf
 
+        <input id="inventory_type" type="hidden" name="inventory_type" value="generic">
+
         <div class="mb-3">
-            <label for="inventory_type" class="form-label">Product Type *</label>
-            <select id="inventory_type" name="inventory_type"
-                    class="form-select" required>
-                <option value="rice" @selected(old('inventory_type', 'rice') === 'rice')>
-                    Rice Product
-                </option>
-                <option value="generic" @selected(old('inventory_type') === 'generic')>
-                    Generic Product
-                </option>
-            </select>
+            <label class="form-label">Product Type</label>
+            <div class="form-control" id="detected-product-type" aria-live="polite">
+                Generic Product
+            </div>
+            <small class="text-muted">
+                Awtomatikong pipiliin ang Rice kapag ang category ay may salitang “rice” o may Rice Type. Iba pang category ay gagamit ng generic inventory at unit.
+            </small>
         </div>
 
         <div class="mb-3">
@@ -50,15 +94,26 @@
             <label for="category" class="form-label">Category</label>
             <input name="category" id="category" class="form-control"
                    value="{{ old('category') }}"
-                   placeholder="Groceries, Drinks, Snacks, Eggs">
+                   placeholder="Rice, Groceries, Drinks, Snacks, Eggs">
+        </div>
+
+        <div class="row g-3">
+            <div class="col-md-6 mb-3">
+                <label for="variant_size" class="form-label">Size / Pack Variant (Optional)</label>
+                <input name="variant_size" id="variant_size" class="form-control" maxlength="80" value="{{ old('variant_size') }}" placeholder="e.g. 5 kg, Large">
+            </div>
+            <div class="col-md-6 mb-3">
+                <label for="variant_color" class="form-label">Color Variant (Optional)</label>
+                <input name="variant_color" id="variant_color" class="form-control" maxlength="80" value="{{ old('variant_color') }}" placeholder="e.g. Red, Blue">
+            </div>
         </div>
 
         <div class="mb-3">
             <label for="image" class="form-label">Product Image</label>
             <input type="file" name="image" id="image"
                    class="form-control"
-                   accept="image/jpeg,image/png,image/webp">
-            <small class="text-muted">Maximum file size: 2 MB.</small>
+                   accept="image/*">
+            <small class="text-muted">Any supported image format, up to 10 MB. You can also add or replace the image after creating the product.</small>
         </div>
 
         {{-- Rice-specific fields --}}
@@ -94,10 +149,10 @@
             </div>
 
             <div class="mb-3">
-                <label for="cost_per_sack" class="form-label">Cost per Sack (₱)</label>
-                <input id="cost_per_sack" type="number" step="0.01" min="0"
+                <label for="cost_per_sack" class="form-label">Cost per Sack (₱) *</label>
+                <input id="cost_per_sack" type="number" step="0.01" min="0.01"
                        name="cost_per_sack" class="form-control"
-                       value="{{ old('cost_per_sack') }}">
+                       value="{{ old('cost_per_sack') }}" required>
             </div>
         </div>
 
@@ -223,15 +278,16 @@
                                 </div>
 
                                 <div class="col-md-6 mb-3">
-                                    <label class="form-label">Cost Price (₱)</label>
+                                    <label class="form-label">Cost Price (₱) *</label>
                                     <input
                                         name="selling_units[{{ $i }}][cost_price]"
                                         type="number"
                                         class="form-control"
-                                        min="0"
+                                        min="0.01"
                                         max="9999999.99"
                                         step="0.01"
                                         value="{{ $unit['cost_price'] ?? '' }}"
+                                        required
                                     >
                                 </div>
                             </div>
@@ -243,11 +299,14 @@
 
         <div class="mb-3">
             <label for="profit_percentage" class="form-label">
-                Profit Percentage (%)
+            Profit Percentage (%) *
             </label>
             <input id="profit_percentage" type="number" step="0.01" min="0"
                    name="profit_percentage" class="form-control"
-                   value="{{ old('profit_percentage') }}">
+               value="{{ old('profit_percentage', 15) }}" required>
+            <small class="text-muted">
+                Defaults to 15% when left blank.
+            </small>
         </div>
 
         <div class="mb-3">
@@ -293,9 +352,13 @@
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const type = document.getElementById('inventory_type');
+    const category = document.getElementById('category');
+    const riceType = document.getElementById('rice_type');
+    const detectedProductType = document.getElementById('detected-product-type');
     const riceFields = document.getElementById('rice-fields');
     const genericFields = document.getElementById('generic-fields');
     const thresholdUnit = document.getElementById('threshold-unit');
+    const costPerSack = document.getElementById('cost_per_sack');
 
     const baseUnit = document.getElementById('base_unit');
     const initialStock = document.getElementById('initial_stock_quantity');
@@ -306,7 +369,9 @@ document.addEventListener('DOMContentLoaded', function () {
     const genericInputs = genericFields.querySelectorAll('input, select');
 
     function updateProductType() {
-        const isRice = type.value === 'rice';
+        const isRice = /\brice\b/i.test(category.value) || riceType.value.trim() !== '';
+        type.value = isRice ? 'rice' : 'generic';
+        detectedProductType.textContent = isRice ? 'Rice Product' : 'Generic Product';
 
         riceFields.hidden = !isRice;
         genericFields.hidden = isRice;
@@ -316,7 +381,8 @@ document.addEventListener('DOMContentLoaded', function () {
             input.required = isRice && [
                 'sack_weight_kg',
                 'price_per_kg',
-                'price_per_sack'
+                'price_per_sack',
+                'cost_per_sack'
             ].includes(input.id);
         });
 
@@ -331,9 +397,10 @@ document.addEventListener('DOMContentLoaded', function () {
             .querySelectorAll('input')
             .forEach(input => {
                 input.disabled = isRice;
-                input.required = !isRice &&
-                    !input.name.endsWith('[cost_price]');
+                input.required = !isRice;
             });
+
+        costPerSack.required = isRice;
 
         thresholdUnit.textContent = isRice
             ? 'kg'
@@ -417,14 +484,15 @@ document.addEventListener('DOMContentLoaded', function () {
                     </div>
 
                     <div class="col-md-6 mb-3">
-                        <label class="form-label">Cost Price (₱)</label>
+                        <label class="form-label">Cost Price (₱) *</label>
                         <input
                             name="selling_units[${index}][cost_price]"
                             type="number"
                             class="form-control"
-                            min="0"
+                            min="0.01"
                             max="9999999.99"
                             step="0.01"
+                            required
                         >
                     </div>
                 </div>
@@ -458,7 +526,8 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    type.addEventListener('change', updateProductType);
+    category.addEventListener('input', updateProductType);
+    riceType.addEventListener('input', updateProductType);
 
     updateProductType();
     reindexSellingUnits();

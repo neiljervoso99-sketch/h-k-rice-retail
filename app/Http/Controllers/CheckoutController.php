@@ -8,6 +8,7 @@ use App\Models\Payment;
 use App\Models\Product;
 use App\Models\ProductSellingUnit;
 use App\Support\OrderEmailNotifier;
+use App\Support\UserAlertNotifier;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -586,6 +587,12 @@ class CheckoutController extends Controller
         OrderEmailNotifier::send(
             $order->fresh(),
             'placed'
+        );
+
+        UserAlertNotifier::admins(
+            'New customer order',
+            'Order ' . $order->order_number . ' has been placed.',
+            route('admin.orders.show', $order),
         );
 
         return redirect()->route('checkout.confirmation', [

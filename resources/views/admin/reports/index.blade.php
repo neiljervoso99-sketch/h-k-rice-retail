@@ -89,6 +89,36 @@
         background: #19472b;
     }
 
+    .report-tools {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 14px;
+    }
+
+    .report-download,
+    .report-print {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 40px;
+        padding: 9px 14px;
+        border: 0;
+        border-radius: 8px;
+        background: #245b38;
+        color: #fff;
+        font: inherit;
+        font-weight: 600;
+        text-decoration: none;
+        cursor: pointer;
+    }
+
+    .report-download:hover,
+    .report-print:hover {
+        background: #19472b;
+        color: #fff;
+    }
+
     .summary-grid {
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -203,6 +233,70 @@
         color: #87938a;
     }
 
+    :root[data-theme="dark"] .reports-page {
+        color: #ecf1ff;
+    }
+
+    :root[data-theme="dark"] .reports-page .reports-header h1,
+    :root[data-theme="dark"] .reports-page .report-panel h2 {
+        color: #ecf1ff;
+    }
+
+    :root[data-theme="dark"] .reports-page .reports-header p,
+    :root[data-theme="dark"] .reports-page .summary-note,
+    :root[data-theme="dark"] .reports-page .chart-description,
+    :root[data-theme="dark"] .reports-page .summary-label {
+        color: #aab6cb;
+    }
+
+    :root[data-theme="dark"] .reports-page .report-panel,
+    :root[data-theme="dark"] .reports-page .summary-card {
+        border-color: #293149;
+        background: #131b2e;
+        color: #ecf1ff;
+        box-shadow: 0 3px 12px rgba(0, 0, 0, .14);
+    }
+
+    :root[data-theme="dark"] .reports-page .summary-value {
+        color: #c9ead0;
+    }
+
+    :root[data-theme="dark"] .reports-page .filter-field label {
+        color: #d3dbed;
+    }
+
+    :root[data-theme="dark"] .reports-page .filter-field select,
+    :root[data-theme="dark"] .reports-page .filter-field input {
+        border-color: #3a465e;
+        background: #11192a;
+        color: #ecf1ff;
+    }
+
+    :root[data-theme="dark"] .reports-page .notice {
+        border-color: #66512a;
+        background: #332a18;
+        color: #f5d894;
+    }
+
+    :root[data-theme="dark"] .reports-page .report-table th {
+        border-bottom-color: #293149;
+        background: #1a2439;
+        color: #d3dbed;
+    }
+
+    :root[data-theme="dark"] .reports-page .report-table td {
+        border-bottom-color: #293149;
+        color: #d3dbed;
+    }
+
+    :root[data-theme="dark"] .reports-page .report-table tbody tr:hover {
+        background: #1a2439;
+    }
+
+    :root[data-theme="dark"] .reports-page .empty-state {
+        color: #aab6cb;
+    }
+
     @media (max-width: 900px) {
         .summary-grid {
             grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -242,6 +336,71 @@
             height: 230px;
         }
     }
+
+    @media print {
+        @page {
+            size: landscape;
+            margin: 12mm;
+        }
+
+        body {
+            background: #fff !important;
+            color: #17231a !important;
+        }
+
+        .sidebar,
+        .admin-header,
+        .report-filters,
+        .report-tools,
+        .notification-center,
+        .page-heading,
+        .admin-main > .notice {
+            display: none !important;
+        }
+
+        .admin-main {
+            min-height: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+
+        .reports-page,
+        .reports-page .report-panel,
+        .reports-page .summary-card {
+            color: #17231a !important;
+            border-color: #bcc7be !important;
+            background: #fff !important;
+            box-shadow: none !important;
+            break-inside: avoid;
+        }
+
+        .reports-page .reports-header,
+        .reports-page .reports-header h1,
+        .reports-page .report-panel h2,
+        .reports-page .summary-value,
+        .reports-page .report-table td,
+        .reports-page .report-table th {
+            color: #17231a !important;
+        }
+
+        .reports-page .charts-grid {
+            display: none !important;
+        }
+
+        .reports-page .table-wrapper {
+            overflow: visible !important;
+        }
+
+        .reports-page .report-table {
+            font-size: 9pt;
+        }
+
+        .reports-page .report-table th,
+        .reports-page .report-table td {
+            padding: 5px 7px;
+            white-space: normal;
+        }
+    }
 </style>
 
 <div class="reports-page">
@@ -249,6 +408,7 @@
     <div class="reports-header">
         <h1>Sales &amp; Profit Reports</h1>
         <p>Monitor sales performance, profit, expenses, and payment methods.</p>
+        <p class="report-date-range">Showing {{ $startDate }} through {{ $endDate }}</p>
     </div>
 
     <section class="report-panel">
@@ -265,27 +425,45 @@
                     <option value="weekly" {{ $period === 'weekly' ? 'selected' : '' }}>Weekly</option>
                     <option value="monthly" {{ $period === 'monthly' ? 'selected' : '' }}>Monthly</option>
                     <option value="yearly" {{ $period === 'yearly' ? 'selected' : '' }}>Yearly</option>
+                    <option value="custom" {{ $period === 'custom' ? 'selected' : '' }}>Custom date range</option>
                 </select>
             </div>
 
             <div class="filter-field">
                 <label for="date">Reference Date</label>
-                <input type="date" name="date" id="date" value="{{ $selectedDate }}" required>
+                <input type="date" name="date" id="date" value="{{ $selectedDate }}">
+            </div>
+
+            <div class="filter-field">
+                <label for="start_date">Custom start date</label>
+                <input type="date" name="start_date" id="start_date" value="{{ request('start_date') }}">
+            </div>
+
+            <div class="filter-field">
+                <label for="end_date">Custom end date</label>
+                <input type="date" name="end_date" id="end_date" value="{{ request('end_date') }}">
             </div>
 
             <button type="submit" class="filter-button">Generate Report</button>
         </form>
 
-        <form action="{{ route('admin.reports.export') }}"
-              method="GET"
-              class="report-filters"
-              style="margin-top: 12px;">
-            <input type="hidden" name="period" value="{{ $period }}">
-            <input type="hidden" name="date" value="{{ $selectedDate }}">
-            <button type="submit" class="filter-button">
-                Download CSV Report
+        <div class="report-tools">
+            <a class="report-download"
+               href="{{ route('admin.reports.export', request()->only(['period', 'date', 'start_date', 'end_date'])) }}">
+                Download CSV
+            </a>
+            <a class="report-download"
+               href="{{ route('admin.reports.export.excel', request()->only(['period', 'date', 'start_date', 'end_date'])) }}">
+                Download Excel
+            </a>
+            <a class="report-download"
+               href="{{ route('admin.reports.export.pdf', request()->only(['period', 'date', 'start_date', 'end_date'])) }}">
+                Download PDF
+            </a>
+            <button class="report-print" type="button" onclick="window.print()">
+                Print Report
             </button>
-        </form>
+        </div>
     </section>
 
     <div class="summary-grid">
@@ -506,12 +684,40 @@ document.addEventListener('DOMContentLoaded', function () {
         currency: 'PHP',
         maximumFractionDigits: 2
     });
+    const reportCharts = [];
+
+    function updateReportChartTheme() {
+        const chartTextColor = document.documentElement.dataset.theme === 'dark'
+            ? '#d3dbed'
+            : '#666';
+
+        reportCharts.forEach(chart => {
+            chart.options.color = chartTextColor;
+
+            if (chart.options.scales) {
+                Object.values(chart.options.scales).forEach(scale => {
+                    scale.ticks.color = chartTextColor;
+                    scale.grid.color = document.documentElement.dataset.theme === 'dark'
+                        ? 'rgba(154, 165, 189, 0.18)'
+                        : 'rgba(0, 0, 0, 0.1)';
+                });
+            }
+
+            if (chart.options.plugins.legend.labels) {
+                chart.options.plugins.legend.labels.color = chartTextColor;
+            }
+
+            chart.update();
+        });
+    }
+
+    document.addEventListener('admin-theme-change', updateReportChartTheme);
 
     // Solid green Sales line graph
     const salesCanvas = document.getElementById('salesAnalyticsChart');
 
     if (salesCanvas) {
-        new Chart(salesCanvas, {
+        reportCharts.push(new Chart(salesCanvas, {
             type: 'line',
             data: {
                 labels: salesData.map(item => item.date),
@@ -573,7 +779,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
                 }
             }
-        });
+        }));
     }
 
     // Cash = green; GCash = yellow
@@ -599,7 +805,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return '#9eaaa1';
         });
 
-        new Chart(paymentCanvas, {
+        reportCharts.push(new Chart(paymentCanvas, {
             type: 'pie',
             data: {
                 labels: hasPaymentData ? paymentLabels : ['No sales data'],
@@ -638,8 +844,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
                 }
             }
-        });
+        }));
     }
+
+    updateReportChartTheme();
 });
 </script>
 @endsection

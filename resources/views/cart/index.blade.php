@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Shopping Cart | H&K Consumer Goods</title>
     <link rel="icon" type="image/png" href="{{ asset('images/HK_Consumer_Goods_Store_logo.png') }}?v=2">
     <style>
@@ -72,6 +73,46 @@
         button.remove { background: white; color: var(--red); border: 1px solid #e2bcbc; }
         button.remove:hover { background: #fff0f0; }
         .summary { margin-top: 24px; }
+        .add-ons {
+            padding: 20px;
+            margin-top: 20px;
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            background: #f0f6ef;
+        }
+        .add-on-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+            gap: 12px;
+        }
+        .add-on-item {
+            display: grid;
+            grid-template-columns: 58px minmax(0, 1fr);
+            gap: 12px;
+            align-items: center;
+            min-width: 0;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: #fff;
+        }
+        .add-on-item img,
+        .add-on-image-placeholder {
+            display: grid;
+            width: 58px;
+            height: 58px;
+            place-items: center;
+            border-radius: 6px;
+            background: #edf3eb;
+            color: var(--muted);
+            object-fit: cover;
+            font-size: .75rem;
+        }
+        .add-on-details { min-width: 0; }
+        .add-on-details h3 { overflow-wrap: anywhere; }
+        .add-on-details .muted { margin: 3px 0; }
+        .add-on-item form { grid-column: 1 / -1; }
+        .add-on-item button { width: 100%; }
         .total { font-size: 1.9rem; font-weight: 800; margin: 6px 0 12px; }
         .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
         .button.secondary { color: var(--green-dark); background: white; border: 1px solid var(--border); }
@@ -82,6 +123,13 @@
         }
         footer { padding: 18px 0 28px; text-align: center; color: var(--muted); font-size: .9rem; }
         @media (max-width: 640px) {
+            header {
+                padding: 14px 0;
+            }
+            .header-inner {
+                display: grid;
+                gap: 4px;
+            }
             .item { grid-template-columns: 1fr; gap: 14px; padding: 16px; }
             .price { text-align: left; min-width: 0; }
             .controls { align-items: stretch; }
@@ -90,10 +138,18 @@
             .controls button { width: 100%; }
             .actions { flex-direction: column; }
             .actions .button { width: 100%; }
+            input, select, button, .button { min-height: 44px; }
+            .total { font-size: 1.6rem; overflow-wrap: anywhere; }
         }
     </style>
+    @vite('resources/js/app.js')
 </head>
 <body>
+@auth
+    <div class="notification-floating">
+        @include('components.notification-center')
+    </div>
+@endauth
 <header>
     <div class="header-inner">
         <div class="brand">H&K Consumer Goods</div>
@@ -275,6 +331,41 @@
             <a class="button" href="{{ route('home') }}">Browse products</a>
         </section>
     @endif
+
+    @if ($suggestedItems->isNotEmpty())
+        <section class="add-ons" aria-labelledby="add-ons-heading">
+            <h2 id="add-ons-heading">Add something to go with it</h2>
+            <p class="muted">A few available items you can add to this same order.</p>
+
+            <div class="add-on-grid">
+                @foreach ($suggestedItems as $suggestion)
+                    @php
+                        $suggestedProduct = $suggestion['product'];
+                    @endphp
+                    <article class="add-on-item">
+                        @if ($suggestedProduct->image)
+                            <img src="{{ asset('storage/' . $suggestedProduct->image) }}" alt="" loading="lazy">
+                        @else
+                            <span class="add-on-image-placeholder" aria-hidden="true">Item</span>
+                        @endif
+
+                        <div class="add-on-details">
+                            <h3>{{ $suggestedProduct->name }}</h3>
+                            <p class="muted">{{ $suggestion['stock_text'] }}</p>
+                            <p class="muted">&#8369;{{ number_format($suggestion['price'], 2) }} / {{ $suggestion['unit'] }}</p>
+                        </div>
+
+                        <form method="POST" action="{{ route('cart.add', $suggestedProduct) }}">
+                            @csrf
+                            <input type="hidden" name="unit" value="{{ $suggestion['unit'] }}">
+                            <input type="hidden" name="quantity" value="{{ $suggestion['quantity'] }}">
+                            <button type="submit">Add {{ $suggestedProduct->name }}</button>
+                        </form>
+                    </article>
+                @endforeach
+            </div>
+        </section>
+    @endif
 </main>
 
 <footer>H&K Consumer Goods · H+K Consumer Goods Store</footer>
@@ -311,5 +402,6 @@ document.querySelectorAll('.cart-update-form').forEach(form => {
     });
 });
 </script>
+@include('components.smart-assistant')
 </body>
 </html>

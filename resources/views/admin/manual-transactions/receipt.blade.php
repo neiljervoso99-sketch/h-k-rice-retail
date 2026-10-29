@@ -81,6 +81,27 @@
         text-align: center;
     }
 
+    :root[data-theme="dark"] .admin-main .pos-receipt {
+        border-color: #dfe7df !important;
+        background: #fff !important;
+        color: #17231a !important;
+    }
+
+    :root[data-theme="dark"] .admin-main .pos-receipt h1,
+    :root[data-theme="dark"] .admin-main .pos-receipt p,
+    :root[data-theme="dark"] .admin-main .pos-receipt span,
+    :root[data-theme="dark"] .admin-main .pos-receipt strong,
+    :root[data-theme="dark"] .admin-main .pos-receipt small,
+    :root[data-theme="dark"] .admin-main .pos-receipt td {
+        color: #17231a !important;
+    }
+
+    :root[data-theme="dark"] .admin-main .pos-receipt th {
+        border: 0;
+        background: #fff !important;
+        color: #17231a !important;
+    }
+
     @media print {
         body {
             background: #fff !important;
