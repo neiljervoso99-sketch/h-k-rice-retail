@@ -2,10 +2,9 @@
 <?php
 
 use App\Http\Controllers\AddressLookupController;
-use App\Http\Controllers\AssistantController;
-use App\Http\Controllers\BundleController;
 use App\Http\Controllers\Admin\BundleController as AdminBundleController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\DebtController;
 use App\Http\Controllers\Admin\DeliveryProofController;
 use App\Http\Controllers\Admin\ExpenseController;
 use App\Http\Controllers\Admin\InventoryController;
@@ -15,14 +14,19 @@ use App\Http\Controllers\Admin\ProductController as AdminProductController;
 use App\Http\Controllers\Admin\ProductReviewController as AdminProductReviewController;
 use App\Http\Controllers\Admin\ProfileController;
 use App\Http\Controllers\Admin\ProfitPricingController;
+use App\Http\Controllers\Admin\PurchaseOrderController;
 use App\Http\Controllers\Admin\ReportController;
+use App\Http\Controllers\Admin\SalesController;
+use App\Http\Controllers\Admin\SupplierController;
 use App\Http\Controllers\Admin\UserManagementController;
+use App\Http\Controllers\AssistantController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\RegisterController;
+use App\Http\Controllers\BundleController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CheckoutController;
-use App\Http\Controllers\Customer\OrderController as CustomerOrderController;
 use App\Http\Controllers\Customer\FavoriteController;
+use App\Http\Controllers\Customer\OrderController as CustomerOrderController;
 use App\Http\Controllers\Customer\ProductReviewController as CustomerProductReviewController;
 use App\Http\Controllers\Customer\ProfileController as CustomerProfileController;
 use App\Http\Controllers\NotificationController;
@@ -127,10 +131,34 @@ Route::middleware(['auth', 'admin-dashboard', AuditAdminActions::class])
         Route::get('/', [DashboardController::class, 'index'])
             ->name('dashboard');
 
+        Route::get('/sales', [SalesController::class, 'index'])
+            ->name('sales.index');
+
+        Route::post('/sales/shifts', [SalesController::class, 'openShift'])
+            ->name('sales.shifts.open');
+
+        Route::post('/sales/shifts/cash-movements', [
+            SalesController::class,
+            'recordCashMovement',
+        ])->name('sales.shifts.cash-movements.store');
+
+        Route::post('/sales/shifts/close', [SalesController::class, 'closeShift'])
+            ->name('sales.shifts.close');
+
         Route::get('/manual-transactions', [
             ManualTransactionController::class,
             'index',
         ])->name('manual-transactions.index');
+
+        Route::get('/utang', [DebtController::class, 'index'])
+            ->name('debts.index');
+
+        Route::post('/utang/cash-loans', [DebtController::class, 'recordCashLoan'])
+            ->name('debts.cash-loans.store');
+
+        Route::post('/utang/{order}/payments', [DebtController::class, 'recordPayment'])
+            ->whereNumber('order')
+            ->name('debts.payments.store');
 
         Route::get('/manual-transactions/create', [
             ManualTransactionController::class,
@@ -162,6 +190,58 @@ Route::middleware(['auth', 'admin', AuditAdminActions::class])
     ->prefix('admin')
     ->name('admin.')
     ->group(function () {
+        Route::get('/suppliers', [SupplierController::class, 'index'])
+            ->name('suppliers.index');
+
+        Route::get('/suppliers/create', [SupplierController::class, 'create'])
+            ->name('suppliers.create');
+
+        Route::post('/suppliers', [SupplierController::class, 'store'])
+            ->name('suppliers.store');
+
+        Route::get('/suppliers/{supplier}/edit', [
+            SupplierController::class,
+            'edit',
+        ])->whereNumber('supplier')->name('suppliers.edit');
+
+        Route::put('/suppliers/{supplier}', [
+            SupplierController::class,
+            'update',
+        ])->whereNumber('supplier')->name('suppliers.update');
+
+        Route::delete('/suppliers/{supplier}', [
+            SupplierController::class,
+            'destroy',
+        ])->whereNumber('supplier')->name('suppliers.destroy');
+
+        Route::get('/purchase-orders', [PurchaseOrderController::class, 'index'])
+            ->name('purchase-orders.index');
+
+        Route::get('/purchase-orders/create', [
+            PurchaseOrderController::class,
+            'create',
+        ])->name('purchase-orders.create');
+
+        Route::post('/purchase-orders', [
+            PurchaseOrderController::class,
+            'store',
+        ])->name('purchase-orders.store');
+
+        Route::delete('/purchase-orders', [
+            PurchaseOrderController::class,
+            'destroyAll',
+        ])->name('purchase-orders.destroy-all');
+
+        Route::get('/purchase-orders/{purchaseOrder}', [
+            PurchaseOrderController::class,
+            'show',
+        ])->whereNumber('purchaseOrder')->name('purchase-orders.show');
+
+        Route::post('/purchase-orders/{purchaseOrder}/receive', [
+            PurchaseOrderController::class,
+            'receive',
+        ])->whereNumber('purchaseOrder')->name('purchase-orders.receive');
+
         Route::get('/users', [UserManagementController::class, 'index'])
             ->name('users.index');
 
@@ -180,6 +260,21 @@ Route::middleware(['auth', 'admin', AuditAdminActions::class])
 
         Route::post('/users', [UserManagementController::class, 'store'])
             ->name('users.store');
+
+        Route::patch('/users/{user}', [
+            UserManagementController::class,
+            'updateProfile',
+        ])->whereNumber('user')->name('users.update');
+
+        Route::delete('/users/{user}', [
+            UserManagementController::class,
+            'destroy',
+        ])->whereNumber('user')->name('users.destroy');
+
+        Route::patch('/users/{user}/permissions', [
+            UserManagementController::class,
+            'updatePermissions',
+        ])->whereNumber('user')->name('users.permissions.update');
 
         Route::patch('/users/{user}/role', [
             UserManagementController::class,

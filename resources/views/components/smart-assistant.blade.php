@@ -5,34 +5,57 @@
         right: 22px;
         bottom: 22px;
         z-index: 80;
-        display: inline-flex;
-        align-items: center;
-        gap: 9px;
-        min-height: 48px;
-        padding: 0 17px;
-        border: 0;
-        border-radius: 24px;
-        background: #245b38;
+        display: grid;
+        width: 52px;
+        height: 52px;
+        min-height: 52px;
+        padding: 0;
+        place-items: center;
+        border: 1px solid rgba(255, 255, 255, .55);
+        border-radius: 50%;
+        background: rgba(36, 91, 56, .64);
         color: #fff;
-        box-shadow: 0 8px 26px rgba(20, 52, 33, .24);
+        box-shadow: 0 5px 18px rgba(20, 52, 33, .18);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
         font: 700 14px/1 Arial, Helvetica, sans-serif;
         cursor: pointer;
+        touch-action: none;
+        user-select: none;
+        -webkit-user-select: none;
     }
 
     .assistant-launcher:hover,
     .assistant-launcher:focus-visible {
-        background: #193f29;
+        background: rgba(25, 63, 41, .82);
+        outline: 2px solid rgba(255, 255, 255, .8);
+        outline-offset: 2px;
+    }
+
+    .assistant-launcher.is-dragging {
+        cursor: grabbing;
+        transition: none;
     }
 
     .assistant-launcher-icon {
         display: grid;
-        width: 25px;
-        height: 25px;
+        width: 34px;
+        height: 34px;
         place-items: center;
         border-radius: 50%;
-        background: #d7edcf;
+        background: rgba(215, 237, 207, .88);
         color: #193f29;
-        font-size: 15px;
+        font-size: 20px;
+    }
+
+    .assistant-launcher-label {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        clip-path: inset(50%);
     }
 
     .assistant-window {
@@ -52,6 +75,11 @@
         color: #263b2b;
         box-shadow: 0 16px 48px rgba(20, 40, 25, .24);
         font: 14px/1.45 Arial, Helvetica, sans-serif;
+    }
+
+    .assistant-window.assistant-window-positioned {
+        right: auto;
+        bottom: auto;
     }
 
     .assistant-window[hidden] {
@@ -226,18 +254,18 @@
         cursor: wait;
     }
 
-    @media (max-width: 480px) {
+    @media (max-width: 640px) {
         .assistant-launcher {
-            right: 14px;
-            bottom: 14px;
+            width: 46px;
+            height: 46px;
+            min-height: 46px;
         }
 
         .assistant-window {
-            right: 10px;
-            bottom: 72px;
-            width: min(390px, calc(100vw - 48px));
-            height: min(620px, calc(100dvh - 90px));
-            max-height: 620px;
+            width: min(360px, calc(100vw - 24px));
+            height: min(540px, calc(100dvh - 32px));
+            max-height: 540px;
+            min-height: 300px;
         }
     }
 </style>
@@ -260,12 +288,12 @@
         </header>
 
         <div class="assistant-messages" role="log" aria-live="polite" aria-relevant="additions text" data-assistant-messages>
-            <div class="assistant-message">Hi! I can help find available products, explain payment and delivery, or check your recent order status.</div>
+            <div class="assistant-message">Hi! Ask me about live store sales, orders, stock, products, expenses, suppliers, purchase orders, users, or staff activity.</div>
             <div class="assistant-quick-replies" data-assistant-quick-replies>
-                <button class="assistant-quick-reply" type="button">Recommend a product</button>
-                <button class="assistant-quick-reply" type="button">Payment options</button>
-                <button class="assistant-quick-reply" type="button">Delivery and pickup</button>
-                <button class="assistant-quick-reply" type="button">Track my order</button>
+                <button class="assistant-quick-reply" type="button">Show store overview</button>
+                <button class="assistant-quick-reply" type="button">Show low stock</button>
+                <button class="assistant-quick-reply" type="button">Sales this month</button>
+                <button class="assistant-quick-reply" type="button">Recent staff activity</button>
             </div>
         </div>
 
@@ -289,10 +317,12 @@
         type="button"
         aria-expanded="false"
         aria-controls="storeAssistantWindow"
+        aria-label="Open store assistant. Drag to move."
+        data-position-key="assistant-position-{{ auth()->id() }}"
         data-assistant-open
     >
-        <span class="assistant-launcher-icon" aria-hidden="true">?</span>
-        <span>Ask assistant</span>
+        <span class="assistant-launcher-icon" aria-hidden="true">✦</span>
+        <span class="assistant-launcher-label">Ask assistant</span>
     </button>
 </div>
 
@@ -310,6 +340,106 @@
         const sendButton = form.querySelector('button[type="submit"]');
         const quickReplies = widget.querySelector('[data-assistant-quick-replies]');
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+        const positionKey = openButton.dataset.positionKey;
+        let hasCustomPosition = false;
+        let dragStart = null;
+        let dragged = false;
+        let dragPointerId = null;
+
+        const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+
+        const launcherLimits = () => ({
+            maxX: Math.max(8, window.innerWidth - openButton.offsetWidth - 8),
+            maxY: Math.max(8, window.innerHeight - openButton.offsetHeight - 8),
+        });
+
+        const saveLauncherPosition = (left, top) => {
+            const { maxX, maxY } = launcherLimits();
+            left = clamp(left, 8, maxX);
+            top = clamp(top, 8, maxY);
+            openButton.style.left = `${left}px`;
+            openButton.style.top = `${top}px`;
+            openButton.style.right = 'auto';
+            openButton.style.bottom = 'auto';
+            hasCustomPosition = true;
+            windowPanel.classList.add('assistant-window-positioned');
+            localStorage.setItem(positionKey, `${left / maxX},${top / maxY}`);
+            return { left, top };
+        };
+
+        const restoreLauncherPosition = () => {
+            const savedPosition = localStorage.getItem(positionKey);
+            if (!savedPosition) return;
+
+            const [xRatio, yRatio] = savedPosition.split(',').map(Number);
+            if (!Number.isFinite(xRatio) || !Number.isFinite(yRatio)) return;
+
+            const { maxX, maxY } = launcherLimits();
+            saveLauncherPosition(xRatio * maxX, yRatio * maxY);
+        };
+
+        const positionWindow = () => {
+            if (!hasCustomPosition || windowPanel.hidden) return;
+
+            const margin = 8;
+            const launcherRect = openButton.getBoundingClientRect();
+            const panelRect = windowPanel.getBoundingClientRect();
+            const left = clamp(
+                launcherRect.left + launcherRect.width / 2 - panelRect.width / 2,
+                margin,
+                Math.max(margin, window.innerWidth - panelRect.width - margin)
+            );
+            const above = launcherRect.top - panelRect.height - 12;
+            const top = above >= margin
+                ? above
+                : clamp(launcherRect.bottom + 12, margin, Math.max(margin, window.innerHeight - panelRect.height - margin));
+
+            windowPanel.style.left = `${left}px`;
+            windowPanel.style.top = `${top}px`;
+        };
+
+        restoreLauncherPosition();
+
+        openButton.addEventListener('pointerdown', (event) => {
+            if (event.button !== 0 && event.pointerType === 'mouse') return;
+
+            const rect = openButton.getBoundingClientRect();
+            dragStart = {
+                pointerX: event.clientX,
+                pointerY: event.clientY,
+                left: rect.left,
+                top: rect.top,
+            };
+            dragged = false;
+            dragPointerId = event.pointerId;
+            openButton.setPointerCapture(event.pointerId);
+        });
+
+        openButton.addEventListener('pointermove', (event) => {
+            if (!dragStart || event.pointerId !== dragPointerId) return;
+
+            const deltaX = event.clientX - dragStart.pointerX;
+            const deltaY = event.clientY - dragStart.pointerY;
+            if (!dragged && Math.hypot(deltaX, deltaY) < 6) return;
+
+            dragged = true;
+            openButton.classList.add('is-dragging');
+            const { left, top } = saveLauncherPosition(
+                dragStart.left + deltaX,
+                dragStart.top + deltaY
+            );
+            positionWindow();
+        });
+
+        const finishDrag = (event) => {
+            if (!dragStart || event.pointerId !== dragPointerId) return;
+            dragStart = null;
+            dragPointerId = null;
+            openButton.classList.remove('is-dragging');
+        };
+
+        openButton.addEventListener('pointerup', finishDrag);
+        openButton.addEventListener('pointercancel', finishDrag);
 
         const appendMessage = (text, sender = 'assistant') => {
             const message = document.createElement('div');
@@ -418,7 +548,13 @@
         };
 
         openButton.addEventListener('click', () => {
+            if (dragged) {
+                dragged = false;
+                return;
+            }
+
             windowPanel.hidden = false;
+            positionWindow();
             openButton.setAttribute('aria-expanded', 'true');
             input.focus();
         });
@@ -437,6 +573,13 @@
         widget.addEventListener('click', (event) => {
             const button = event.target.closest('.assistant-quick-reply');
             if (button) sendMessage(button.textContent);
+        });
+
+        window.addEventListener('resize', () => {
+            if (!hasCustomPosition) return;
+            const rect = openButton.getBoundingClientRect();
+            const { left, top } = saveLauncherPosition(rect.left, rect.top);
+            positionWindow();
         });
     })();
 </script>

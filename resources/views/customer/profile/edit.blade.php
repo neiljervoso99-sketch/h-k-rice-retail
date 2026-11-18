@@ -136,12 +136,15 @@
 
         /* Main content */
         .container {
+            width: 100%;
             max-width: 760px;
             margin: 35px auto;
             padding: 0 16px;
+            min-width: 0;
         }
 
         .card {
+            min-width: 0;
             background: white;
             border-radius: 16px;
             padding: 28px;
@@ -211,12 +214,34 @@
         }
 
         /* Messages */
-        .success {
-            padding: 12px;
-            background: #e4f6e7;
-            color: #205c32;
-            border-radius: 8px;
-            margin-bottom: 18px;
+        .success-dialog {
+            position: fixed;
+            inset: 0;
+            z-index: 200;
+            display: grid;
+            place-items: center;
+            padding: 20px;
+            background: rgba(15, 30, 20, 0.58);
+        }
+
+        .success-dialog-card {
+            width: min(100%, 420px);
+            padding: 28px;
+            border-radius: 16px;
+            background: white;
+            box-shadow: 0 18px 50px rgba(0, 0, 0, 0.24);
+            text-align: center;
+        }
+
+        .success-dialog-card h2 {
+            margin: 0 0 10px;
+            color: #245b38;
+        }
+
+        .success-dialog-card p {
+            margin: 0 0 22px;
+            color: #526157;
+            line-height: 1.5;
         }
 
         .errors {
@@ -280,21 +305,40 @@
 
             .header-inner {
                 gap: 12px;
+                align-items: flex-start;
             }
 
             .brand {
                 font-size: 16px;
             }
 
+            .profile-menu {
+                align-self: flex-start;
+            }
+
             .profile-menu summary {
                 gap: 6px;
                 padding: 5px 8px;
                 font-size: 14px;
+                max-width: calc(100vw - 32px);
+            }
+
+            .profile-menu summary > span:nth-child(2) {
+                min-width: 0;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
             }
 
             .profile-icon {
                 width: 32px;
                 height: 32px;
+            }
+
+            .profile-dropdown {
+                right: auto;
+                left: 0;
+                width: min(220px, calc(100vw - 32px));
             }
 
             .container {
@@ -322,8 +366,12 @@
                 min-height: 44px;
             }
 
-            .profile-dropdown {
-                max-width: calc(100vw - 28px);
+            .actions .btn {
+                flex: 1 1 100%;
+            }
+
+            .success-dialog-card {
+                padding: 24px 20px;
             }
         }
     </style>
@@ -382,12 +430,6 @@
         <p class="description">
             Manage your account information and profile picture.
         </p>
-
-        @if (session('success'))
-            <div class="success" role="status">
-                {{ session('success') }}
-            </div>
-        @endif
 
         @if ($errors->any())
             <div class="errors" role="alert">
@@ -484,6 +526,23 @@
 <footer>
     H&amp;K Consumer Goods Store — Quality goods for every home
 </footer>
+
+@if (session('success'))
+    <div class="success-dialog">
+        <section
+            class="success-dialog-card"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="profile-updated-title"
+        >
+            <h2 id="profile-updated-title">Your profile updated</h2>
+            <p>{{ session('success') }}</p>
+            <a href="{{ route('home') }}" class="btn btn-primary">
+                Go Back to Dashboard
+            </a>
+        </section>
+    </div>
+@endif
 
 @include('components.smart-assistant')
 </body>

@@ -1,6 +1,24 @@
  @extends('admin.layouts.app')
 
 @section('content')
+@if ($drawerMode)
+<style>
+    body.drawer-embedded .sidebar,
+    body.drawer-embedded .admin-header,
+    body.drawer-embedded .sidebar-overlay,
+    body.drawer-embedded .notification-floating { display: none !important; }
+    body.drawer-embedded .admin-main {
+        width: 100% !important;
+        min-height: 100dvh !important;
+        margin: 0 !important;
+        padding: 14px !important;
+    }
+    body.drawer-embedded .manual-transaction-page { max-width: none; }
+</style>
+<script>
+document.addEventListener('DOMContentLoaded', () => document.body.classList.add('drawer-embedded'));
+</script>
+@endif
 <style>
 .manual-transaction-page .card {
     border: 1px solid #e2e8f0;
@@ -886,14 +904,16 @@
     {{-- Page Header --}}
     <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
         <div>
-            <h1 class="h3 fw-bold mb-1">New Manual Transaction</h1>
+            <h1 class="h3 fw-bold mb-1">{{ $defaultPaymentMethod === 'utang' ? 'Record Product Utang' : 'New Manual Transaction' }}</h1>
             <p class="text-muted mb-0">Record a walk-in sale with live pricing, stock checks, and payment totals.</p>
         </div>
 
-        <a href="{{ route('admin.manual-transactions.index') }}"
+        @unless ($drawerMode)
+        <a href="{{ route('admin.sales.index') }}"
            style="display:inline-block;background:#6c757d;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none;font-weight:600;border:1px solid #6c757d;">
-            ← Back to Transactions
+            ← Back to Sales
         </a>
+        @endunless
     </div>
 
     {{-- Validation Errors --}}
@@ -905,6 +925,18 @@
                     <li>{{ $error }}</li>
                 @endforeach
             </ul>
+        </div>
+    @endif
+
+    @if (!$shift && $defaultPaymentMethod !== 'utang')
+        <div class="alert alert-warning shadow-sm" role="status">
+            Open your cash drawer shift on the
+            <a href="{{ route('admin.sales.index') }}">Sales (Benta) page</a>
+            before saving Cash or GCash sales. Choose Utang to record a debt without a cash payment.
+        </div>
+    @elseif ($defaultPaymentMethod === 'utang')
+        <div class="alert alert-info shadow-sm" role="status">
+            Record the customer and products. No cash payment is required now; the full total will be tracked as a balance.
         </div>
     @endif
 
@@ -973,11 +1005,12 @@
                 <div class="row g-3">
                     <div class="col-md-6">
                         <label for="customer_name" class="form-label fw-semibold">
-                            Customer Name (Optional)
+                            Customer Name <span id="customerNameRequired" class="text-muted">(Optional)</span>
                         </label>
-                        <input type="text" name="customer_name" id="customer_name"
+                           <input type="text" name="customer_name" id="customer_name"
                                class="form-control" maxlength="255"
                                value="{{ old('customer_name') }}"
+                               @required($defaultPaymentMethod === 'utang')
                                placeholder="Enter customer name">
                     </div>
 
@@ -998,12 +1031,16 @@
                         <select name="payment_method" id="payment_method"
                                 class="form-select" required>
                             <option value="cash"
-                                {{ old('payment_method', 'cash') === 'cash' ? 'selected' : '' }}>
+                                {{ old('payment_method', $defaultPaymentMethod) === 'cash' ? 'selected' : '' }}>
                                 Cash
                             </option>
                             <option value="gcash"
-                                {{ old('payment_method') === 'gcash' ? 'selected' : '' }}>
+                                {{ old('payment_method', $defaultPaymentMethod) === 'gcash' ? 'selected' : '' }}>
                                 GCash
+                            </option>
+                            <option value="utang"
+                                {{ old('payment_method', $defaultPaymentMethod) === 'utang' ? 'selected' : '' }}>
+                                Utang
                             </option>
                         </select>
                     </div>
@@ -1071,7 +1108,7 @@
                 <div class="card mt-4 border-success" id="paymentSummary">
                     <div class="card-header bg-white fw-bold">Payment Summary</div>
                     <div class="card-body">
-                        <div id="cashPaymentFields">
+                        <div id="cashPaymentFields" style="display: {{ old('payment_method', $defaultPaymentMethod) === 'cash' ? 'block' : 'none' }};">
                             <label for="cash_received" class="form-label fw-semibold">
                                 Cash Received (PHP)
                             </label>
@@ -1121,8 +1158,10 @@
 
             <button type="submit"
                     id="submitTransactionButton"
+                    data-has-shift="{{ $shift ? '1' : '0' }}"
+                    @disabled(!$shift && $defaultPaymentMethod !== 'utang')
                     style="background:#198754;color:#fff;padding:12px 24px;border:1px solid #198754;border-radius:6px;font-weight:700;cursor:pointer;">
-                Save Transaction
+                {{ $defaultPaymentMethod === 'utang' ? 'Record Utang' : ($shift ? 'Save Transaction' : 'Open Cash Drawer to Save') }}
             </button>
         </div>
     </form>
@@ -1141,6 +1180,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const form = document.getElementById('manualTransactionForm');
     const submitButton = document.getElementById('submitTransactionButton');
     const paymentMethod = document.getElementById('payment_method');
+    const customerNameInput = document.getElementById('customer_name');
+    const customerNameRequired = document.getElementById('customerNameRequired');
     const gcashReferenceField = document.getElementById('gcashReferenceField');
     const gcashReferenceInput = document.getElementById('gcash_reference_number');
     const cashReceivedInput = document.getElementById('cash_received');
@@ -1680,8 +1721,24 @@ document.addEventListener('DOMContentLoaded', function () {
         updateGcashReferenceField();
 
         const isCash = paymentMethod.value === 'cash';
+        const isDebt = paymentMethod.value === 'utang';
+        const hasShift = submitButton.dataset.hasShift === '1';
         cashPaymentFields.style.display = isCash ? '' : 'none';
         cashReceivedInput.required = isCash;
+        customerNameInput.required = isDebt;
+        customerNameRequired.textContent = isDebt ? '(Required for Utang)' : '(Optional)';
+        submitButton.disabled = !hasShift && !isDebt;
+        submitButton.textContent = isDebt
+            ? 'Record Utang'
+            : (hasShift ? 'Save Transaction' : 'Open Cash Drawer to Save');
+
+        if (isDebt) {
+            changeAmount.textContent = peso(0);
+            remainingBalance.textContent = peso(currentGrandTotal);
+            paymentMessage.textContent = 'The full transaction total will be recorded as an outstanding balance.';
+            paymentMessage.className = 'small mt-3 text-warning fw-semibold';
+            return;
+        }
 
         if (!isCash) {
             changeAmount.textContent = peso(0);
@@ -1816,7 +1873,11 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
 
-        if (!confirm('Save this transaction? The sold quantities will be deducted from inventory.')) {
+        const confirmation = paymentMethod.value === 'utang'
+            ? 'Record this as customer debt? The products will be deducted from inventory and the total will remain unpaid.'
+            : 'Save this transaction? The sold quantities will be deducted from inventory.';
+
+        if (!confirm(confirmation)) {
             event.preventDefault();
             return;
         }

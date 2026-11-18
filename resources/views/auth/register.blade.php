@@ -195,13 +195,14 @@
                 autofocus
             >
 
-            <label for="email">Email address</label>
+            <label for="email_or_phone">Email or phone number</label>
             <input
-                id="email"
-                name="email"
-                type="email"
-                value="{{ old('email') }}"
-                autocomplete="email"
+                id="email_or_phone"
+                name="email_or_phone"
+                type="text"
+                value="{{ old('email_or_phone') }}"
+                placeholder="Email or phone number"
+                autocomplete="username"
                 maxlength="255"
                 required
             >
@@ -242,7 +243,7 @@
             Already have an account?
             <a href="{{ route('login') }}">Log In</a>
             <div class="back">
-                <a href="{{ route('home') }}">â† Back to store</a>
+                <a href="{{ route('home') }}">← Back to store</a>
             </div>
         </div>
     </main>

@@ -41,7 +41,7 @@ class NotificationsTest extends TestCase
             ->assertNotFound();
     }
 
-    public function test_sending_a_user_alert_stores_it_and_broadcasts_it(): void
+    public function test_sending_a_user_alert_persists_a_notification(): void
     {
         Event::fake([UserAlertCreated::class]);
         $user = User::factory()->create(['role' => 'rider']);
@@ -57,8 +57,23 @@ class NotificationsTest extends TestCase
 
         $this->assertSame('New delivery assignment', $notification->data['title']);
         $this->assertSame('/rider/orders/123', $notification->data['url']);
-        Event::assertDispatched(UserAlertCreated::class, fn (UserAlertCreated $event) =>
-            $event->userId === $user->id
+        $this->assertSame(1, $user->notifications()->count());
+    }
+
+    public function test_sending_a_user_alert_broadcasts_after_persisting_it(): void
+    {
+        Event::fake([UserAlertCreated::class]);
+        $user = User::factory()->create(['role' => 'rider']);
+
+        UserAlertNotifier::send(
+            $user,
+            'New delivery assignment',
+            'Order HK-123 was assigned to you.',
+            '/rider/orders/123',
+        );
+
+        $notification = $user->notifications()->firstOrFail();
+        Event::assertDispatched(UserAlertCreated::class, fn (UserAlertCreated $event) => $event->userId === $user->id
             && $event->notificationId === $notification->id
         );
     }

@@ -8,7 +8,8 @@ use Illuminate\Http\Request;
 
 class CartController extends Controller
 {
-    private const MINIMUM_KG_ORDER = 5;
+    private const MINIMUM_KG_ORDER = 1;
+
     private const MAXIMUM_QUANTITY = 1000;
 
     private function isGeneric(Product $product): bool
@@ -28,14 +29,13 @@ class CartController extends Controller
         string $unit
     ): ?ProductSellingUnit {
         return $this->activeSellingUnits($product)
-            ->first(fn ($sellingUnit) =>
-                strtolower($sellingUnit->unit_name) === strtolower($unit)
+            ->first(fn ($sellingUnit) => strtolower($sellingUnit->unit_name) === strtolower($unit)
             );
     }
 
     private function productUnit(Product $product): string
     {
-        if (!$this->isGeneric($product)) {
+        if (! $this->isGeneric($product)) {
             return 'kg';
         }
 
@@ -47,7 +47,7 @@ class CartController extends Controller
         if ($this->isGeneric($product)) {
             $sellingUnit = $this->sellingUnit($product, $unit);
 
-            if (!$sellingUnit) {
+            if (! $sellingUnit) {
                 return null;
             }
 
@@ -62,9 +62,9 @@ class CartController extends Controller
 
         if (
             $price === null
-            || !is_numeric($price)
+            || ! is_numeric($price)
             || (float) $price <= 0
-            || !(bool) $product->price_confirmed
+            || ! (bool) $product->price_confirmed
         ) {
             return null;
         }
@@ -105,19 +105,19 @@ class CartController extends Controller
     ): ?float {
         $sellingUnit = $this->sellingUnit($product, $unit);
 
-        if (!$sellingUnit) {
+        if (! $sellingUnit) {
             return null;
         }
 
         $factor = (float) $sellingUnit->conversion_factor;
 
-        if (!is_finite($factor) || $factor <= 0) {
+        if (! is_finite($factor) || $factor <= 0) {
             return null;
         }
 
         $baseQuantity = $quantity * $factor;
 
-        if (!is_finite($baseQuantity) || $baseQuantity <= 0) {
+        if (! is_finite($baseQuantity) || $baseQuantity <= 0) {
             return null;
         }
 
@@ -158,37 +158,30 @@ class CartController extends Controller
         string $unit,
         float $quantity
     ): ?string {
-        if ($quantity <= 0 || $quantity > self::MAXIMUM_QUANTITY) {
-            return 'Quantity must be greater than zero and no more than 1,000 units.';
+        if ($quantity < 0.01 || $quantity > self::MAXIMUM_QUANTITY) {
+            return 'Quantity must be at least 0.01 units and no more than 1,000 units.';
         }
 
         if ($this->isGeneric($product)) {
             $sellingUnit = $this->sellingUnit($product, $unit);
 
-            if (!$sellingUnit || (float) $sellingUnit->conversion_factor <= 0) {
+            if (! $sellingUnit || (float) $sellingUnit->conversion_factor <= 0) {
                 return 'Please select an active selling unit for this product.';
             }
 
             return null;
         }
 
-        if (!in_array($unit, ['kg', 'sack'], true)) {
+        if (! in_array($unit, ['kg', 'sack'], true)) {
             return 'Rice can only be ordered by kilogram or sack.';
         }
 
-        if ($unit === 'kg' && $quantity < self::MINIMUM_KG_ORDER) {
-            return 'Minimum order is 5 kg for per-kilogram rice purchases.';
+        if ($unit === 'kg' && $quantity < 0.01) {
+            return 'Minimum order is 0.01 kg for per-kilogram rice purchases.';
         }
 
         if ($unit === 'sack' && floor($quantity) !== $quantity) {
             return 'Sack quantities must be whole numbers.';
-        }
-
-        if (
-            $unit === 'kg'
-            && floor($quantity) !== $quantity
-        ) {
-            return 'Rice quantities in kilograms must be whole numbers.';
         }
 
         return null;
@@ -205,11 +198,12 @@ class CartController extends Controller
 
         $cartProductIds = array_map('intval', array_keys($cart));
         $hasRiceInCart = $products->contains(
-            fn (Product $product) => !$this->isGeneric($product)
+            fn (Product $product) => ! $this->isGeneric($product)
         );
+        $availableProducts = $this->cartAddOnSuggestions($cartProductIds, $hasRiceInCart);
         $suggestedItems = $cartProductIds === []
             ? collect()
-            : $this->cartAddOnSuggestions($cartProductIds, $hasRiceInCart);
+            : $availableProducts->take(4)->values();
 
         $items = [];
         $total = 0.0;
@@ -219,8 +213,9 @@ class CartController extends Controller
         foreach ($cart as $id => $item) {
             $product = $products->get($id);
 
-            if (!$product || !$product->is_active) {
+            if (! $product || ! $product->is_active) {
                 $hasUnavailableStock = true;
+
                 continue;
             }
 
@@ -245,7 +240,7 @@ class CartController extends Controller
                 $needsPriceConfirmation = true;
             }
 
-            if (!$inStock || $error !== null) {
+            if (! $inStock || $error !== null) {
                 $hasUnavailableStock = true;
             }
 
@@ -285,8 +280,8 @@ class CartController extends Controller
         }
 
         $canProceed = count($items) > 0
-            && !$needsPriceConfirmation
-            && !$hasUnavailableStock;
+            && ! $needsPriceConfirmation
+            && ! $hasUnavailableStock;
 
         return view('cart.index', compact(
             'items',
@@ -294,7 +289,8 @@ class CartController extends Controller
             'needsPriceConfirmation',
             'hasUnavailableStock',
             'canProceed',
-            'suggestedItems'
+            'suggestedItems',
+            'availableProducts'
         ));
     }
 
@@ -307,15 +303,14 @@ class CartController extends Controller
             ->get();
 
         $suggestions = $products->map(function (Product $product) {
-            if (!$product->price_confirmed) {
+            if (! $product->price_confirmed) {
                 return null;
             }
 
             if ($this->isGeneric($product)) {
                 $stock = (float) $product->stock_base_quantity;
                 $units = $product->sellingUnits
-                    ->filter(fn (ProductSellingUnit $unit) =>
-                        (float) $unit->conversion_factor > 0
+                    ->filter(fn (ProductSellingUnit $unit) => (float) $unit->conversion_factor > 0
                         && (float) $unit->selling_price > 0
                         && (float) $unit->conversion_factor <= $stock
                     );
@@ -323,11 +318,10 @@ class CartController extends Controller
                 $baseUnit = strtolower(trim(
                     (string) ($product->base_unit ?: $product->stock_unit ?: 'piece')
                 ));
-                $unit = $units->first(fn (ProductSellingUnit $candidate) =>
-                    strtolower($candidate->unit_name) === $baseUnit
+                $unit = $units->first(fn (ProductSellingUnit $candidate) => strtolower($candidate->unit_name) === $baseUnit
                 ) ?? $units->sortBy('conversion_factor')->first();
 
-                if (!$unit) {
+                if (! $unit) {
                     return null;
                 }
 
@@ -339,7 +333,7 @@ class CartController extends Controller
                     'stock_text' => number_format(
                         $stock / (float) $unit->conversion_factor,
                         2
-                    ) . ' ' . $unit->unit_name . ' available',
+                    ).' '.$unit->unit_name.' available',
                     'is_generic' => true,
                 ];
             }
@@ -356,7 +350,7 @@ class CartController extends Controller
                 'unit' => 'kg',
                 'quantity' => self::MINIMUM_KG_ORDER,
                 'price' => $price,
-                'stock_text' => number_format($stock, 2) . ' kg available',
+                'stock_text' => number_format($stock, 2).' kg available',
                 'is_generic' => false,
             ];
         })->filter();
@@ -364,7 +358,7 @@ class CartController extends Controller
         return $suggestions
             ->sortBy(function (array $item) use ($hasRiceInCart): int {
                 $product = $item['product'];
-                $text = strtolower($product->name . ' ' . $product->category . ' ' . $product->description);
+                $text = strtolower($product->name.' '.$product->category.' '.$product->description);
                 $groceryScore = preg_match('/egg|oil|sugar|coffee|noodle|canned|grocery|sardine/', $text) ? 0 : 1;
                 $genericScore = $item['is_generic'] ? 0 : 1;
 
@@ -372,7 +366,6 @@ class CartController extends Controller
                     ? ($genericScore * 10 + $groceryScore)
                     : ($groceryScore * 10 + $genericScore);
             })
-            ->take(4)
             ->values();
     }
 
@@ -388,7 +381,7 @@ class CartController extends Controller
                 'required',
                 'numeric',
                 'gt:0',
-                'max:' . self::MAXIMUM_QUANTITY,
+                'max:'.self::MAXIMUM_QUANTITY,
             ],
         ]);
 
@@ -402,18 +395,18 @@ class CartController extends Controller
         );
 
         if ($error !== null) {
-            return back()->with('cart_error', $error);
+            return redirect()->route('cart.index')->with('cart_error', $error);
         }
 
-        if (!$product->price_confirmed) {
-            return back()->with(
+        if (! $product->price_confirmed) {
+            return redirect()->route('cart.index')->with(
                 'cart_error',
                 'The store has not confirmed this product price yet.'
             );
         }
 
         if ($this->validPrice($product, $unit) === null) {
-            return back()->with(
+            return redirect()->route('cart.index')->with(
                 'cart_error',
                 'This purchase option does not have a valid confirmed price.'
             );
@@ -436,11 +429,11 @@ class CartController extends Controller
         );
 
         if ($error !== null) {
-            return back()->with('cart_error', $error);
+            return redirect()->route('cart.index')->with('cart_error', $error);
         }
 
-        if (!$this->stockAvailable($product, $unit, $quantity)) {
-            return back()->with(
+        if (! $this->stockAvailable($product, $unit, $quantity)) {
+            return redirect()->route('cart.index')->with(
                 'cart_error',
                 'Insufficient stock for the requested quantity.'
             );
@@ -470,14 +463,14 @@ class CartController extends Controller
                 'required',
                 'numeric',
                 'gt:0',
-                'max:' . self::MAXIMUM_QUANTITY,
+                'max:'.self::MAXIMUM_QUANTITY,
             ],
         ]);
 
         $id = (string) $product->id;
         $cart = $request->session()->get('cart', []);
 
-        if (!isset($cart[$id])) {
+        if (! isset($cart[$id])) {
             return redirect()->route('cart.index');
         }
 
@@ -501,7 +494,7 @@ class CartController extends Controller
             );
         }
 
-        if (!$this->stockAvailable($product, $unit, $quantity)) {
+        if (! $this->stockAvailable($product, $unit, $quantity)) {
             return back()->with(
                 'cart_error',
                 'Insufficient stock for the requested quantity.'

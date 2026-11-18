@@ -5,16 +5,30 @@ namespace App\Services;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\User;
-use Illuminate\Support\Collection;
 
 class SmartAssistant
 {
+    public function __construct(
+        private readonly AdminDataAssistant $adminDataAssistant
+    ) {}
+
     public function answer(?User $user, string $question): array
     {
         $text = mb_strtolower(trim($question));
 
         if ($text === '') {
             return $this->reply('I can help with products, ordering, payment, delivery, and order status.');
+        }
+
+        if ($user?->isAdmin() && $this->matches($text, ['inventory summary'])) {
+            return $this->operationsSummary();
+        }
+
+        if ($user?->isAdmin()) {
+            $adminAnswer = $this->adminDataAssistant->answer($text);
+            if ($adminAnswer !== null) {
+                return $adminAnswer;
+            }
         }
 
         if ($this->matches($text, ['payment', 'gcash', 'cash', 'bayad', 'bayaran'])) {
@@ -49,9 +63,19 @@ class SmartAssistant
 
         if ($this->matches($text, ['help', 'faq', 'how to order', 'paano umorder', 'hello', 'hi', 'kamusta'])) {
             return $this->reply(
-                'I can help you find available products, explain payment and delivery, or check your recent order status. What would you like to know?',
+                $user?->isAdmin()
+                    ? 'Ask me about sales, orders, stock, products and prices, expenses, suppliers, purchase orders, users, or staff activity. Store records stay inside this application.'
+                    : 'I can help you find available products, explain payment and delivery, or check your recent order status. What would you like to know?',
                 [],
-                ['Recommend a product', 'Payment options', 'Delivery and pickup', 'Track my order']
+                $user?->isAdmin()
+                    ? ['Show store overview', 'Show low stock', 'Sales this month', 'Recent staff activity']
+                    : ['Recommend a product', 'Payment options', 'Delivery and pickup', 'Track my order']
+            );
+        }
+
+        if ($user?->isAdmin()) {
+            return $this->reply(
+                'I can look up live admin data for sales, orders, inventory, products and prices, expenses, suppliers, purchase orders, user roles, and staff activity. Try asking about one of those areas.'
             );
         }
 
@@ -60,7 +84,7 @@ class SmartAssistant
 
     private function orderStatus(?User $user): array
     {
-        if (!$user) {
+        if (! $user) {
             return $this->reply('Please sign in to check your order status. I can still help you browse products or answer checkout questions.');
         }
 
@@ -71,7 +95,7 @@ class SmartAssistant
             return $this->reply("There are {$pending} orders awaiting review and {$today} orders created today. Customer details are available in the admin orders page.");
         }
 
-        if (!$user->isCustomer()) {
+        if (! $user->isCustomer()) {
             return $this->reply('Order tracking is available from the customer account that placed the order.');
         }
 
@@ -168,8 +192,7 @@ class SmartAssistant
         }
 
         if ($this->matches($question, ['cheap', 'affordable', 'lowest price', 'cheapest'])) {
-            $matches = $matches->sortBy(fn (array $match) =>
-                $this->recommendationPrice($match['product']) ?? PHP_FLOAT_MAX
+            $matches = $matches->sortBy(fn (array $match) => $this->recommendationPrice($match['product']) ?? PHP_FLOAT_MAX
             );
         }
 
@@ -208,19 +231,19 @@ class SmartAssistant
                 if ($unitPrices->isNotEmpty()) {
                     $price = $unitPrices->implode(' / ');
                 } elseif ((float) $product->price_per_unit > 0) {
-                    $price = '₱' . number_format((float) $product->price_per_unit, 2) . ' per ' . $unit;
+                    $price = '₱'.number_format((float) $product->price_per_unit, 2).' per '.$unit;
                 }
             } elseif ((float) $product->price_per_kg > 0) {
-                $price = '₱' . number_format((float) $product->price_per_kg, 2) . ' per kg';
+                $price = '₱'.number_format((float) $product->price_per_kg, 2).' per kg';
             }
         }
 
         return [
             'name' => $product->name,
             'category' => $product->rice_type ?: $product->category ?: 'Store product',
-            'stock' => number_format($stock, 2) . ' ' . $unit . ' available',
+            'stock' => number_format($stock, 2).' '.$unit.' available',
             'price' => $price,
-            'image' => $product->image ? asset('storage/' . $product->image) : null,
+            'image' => $product->image ? asset('storage/'.$product->image) : null,
             'url' => route('home', ['search' => $product->name]),
         ];
     }
@@ -234,7 +257,7 @@ class SmartAssistant
 
     private function recommendationPrice(Product $product): ?float
     {
-        if (!$product->price_confirmed) {
+        if (! $product->price_confirmed) {
             return null;
         }
 

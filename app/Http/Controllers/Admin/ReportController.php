@@ -90,6 +90,7 @@ class ReportController extends Controller
     {
         return Order::query()
             ->where('status', 'completed')
+            ->whereHas('items')
             ->whereNotNull('completed_at')
             ->whereBetween('completed_at', [
                 $start->toDateTimeString(),
@@ -166,6 +167,7 @@ class ReportController extends Controller
          */
         $completedQuery = Order::query()
             ->where('status', 'completed')
+            ->whereHas('items')
             ->whereNotNull('completed_at')
             ->whereBetween('completed_at', [
                 $start->toDateTimeString(),

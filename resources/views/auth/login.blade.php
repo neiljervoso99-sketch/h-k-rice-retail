@@ -4,7 +4,7 @@
    
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Owner Login | H&K Consumer Goods Store</title>
+    <title>Log In | H&K Consumer Goods Store</title>
      <link rel="icon" type="image/png" href="{{ asset('images/HK_Consumer_Goods_Store_logo.png') }}">
 
     <style>
@@ -48,7 +48,7 @@
             font-weight: bold;
         }
 
-        input[type="email"],
+        input[type="text"],
         input[type="password"] {
             width: 100%;
             padding: 12px;
@@ -110,7 +110,7 @@
                 font-size: 25px;
             }
 
-            input[type="email"],
+            input[type="text"],
             input[type="password"] {
                 min-height: 46px;
                 font-size: 16px;
@@ -125,8 +125,8 @@
 <body>
     <main class="login-card">
         <div class="brand">H&K Consumer Goods Store</div>
-        <h1>Owner Login</h1>
-        <p class="subtitle">Sign in to manage rice prices and inventory.</p>
+        <h1>Log In</h1>
+        <p class="subtitle">Sign in with your email address or phone number.</p>
 
         @if ($errors->any())
             <div class="error" role="alert">
@@ -139,12 +139,13 @@
         <form method="POST" action="{{ route('login.submit') }}">
             @csrf
 
-            <label for="email">Email address</label>
+            <label for="email">Email or phone number</label>
             <input
                 id="email"
-                type="email"
+                type="text"
                 name="email"
                 value="{{ old('email') }}"
+                placeholder="Email or phone number"
                 autocomplete="username"
                 required
                 autofocus
@@ -164,7 +165,7 @@
                 Remember me
             </label>
 
-            <button type="submit">Sign In</button>
+            <button type="submit">Log In</button>
         </form>
 
         <a class="back" href="{{ route('home') }}">Back to Store</a>

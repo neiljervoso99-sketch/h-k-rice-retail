@@ -56,11 +56,15 @@ class ProductReviewTest extends TestCase
 
         $this->actingAs($admin)
             ->get(route('admin.reviews.index'))
+            ->assertRedirect(route('admin.products.index'));
+
+        $this->get(route('admin.products.index'))
             ->assertOk()
+            ->assertSee('Product Reviews')
             ->assertSee('Good quality.');
 
         $this->patch(route('admin.reviews.approve', $review))
-            ->assertRedirect(route('admin.reviews.index'));
+            ->assertRedirect(route('admin.products.index'));
 
         $this->actingAs($customer)
             ->get(route('home'))

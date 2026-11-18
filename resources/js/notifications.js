@@ -12,6 +12,73 @@ function initializeNotificationCenter(center) {
     }
 
     const readUrl = center.dataset.readUrlTemplate;
+    const panelHeader = panel.querySelector('.notification-panel-header');
+
+    if (!panelHeader) {
+        console.error('Notification center could not initialize: panel header is missing.');
+        return;
+    }
+
+    let dragState = null;
+
+    function keepPanelInViewport(left, top) {
+        const maxLeft = Math.max(0, window.innerWidth - panel.offsetWidth);
+        const maxTop = Math.max(0, window.innerHeight - panel.offsetHeight);
+
+        panel.style.left = `${Math.min(Math.max(0, left), maxLeft)}px`;
+        panel.style.top = `${Math.min(Math.max(0, top), maxTop)}px`;
+    }
+
+    panelHeader.addEventListener('pointerdown', event => {
+        if (event.target instanceof Element && event.target.closest('button')) {
+            return;
+        }
+
+        const bounds = panel.getBoundingClientRect();
+        panel.style.position = 'fixed';
+        panel.style.right = 'auto';
+        panel.style.left = `${bounds.left}px`;
+        panel.style.top = `${bounds.top}px`;
+        panel.style.transform = 'none';
+        dragState = {
+            pointerId: event.pointerId,
+            offsetX: event.clientX - bounds.left,
+            offsetY: event.clientY - bounds.top,
+        };
+        panel.classList.add('is-dragging');
+        panelHeader.setPointerCapture(event.pointerId);
+        event.preventDefault();
+    });
+
+    panelHeader.addEventListener('pointermove', event => {
+        if (!dragState || dragState.pointerId !== event.pointerId) {
+            return;
+        }
+
+        keepPanelInViewport(
+            event.clientX - dragState.offsetX,
+            event.clientY - dragState.offsetY,
+        );
+    });
+
+    function stopDragging(event) {
+        if (!dragState || dragState.pointerId !== event.pointerId) {
+            return;
+        }
+
+        dragState = null;
+        panel.classList.remove('is-dragging');
+    }
+
+    panelHeader.addEventListener('pointerup', stopDragging);
+    panelHeader.addEventListener('pointercancel', stopDragging);
+
+    window.addEventListener('resize', () => {
+        if (panel.style.position === 'fixed' && !panel.hidden) {
+            const bounds = panel.getBoundingClientRect();
+            keepPanelInViewport(bounds.left, bounds.top);
+        }
+    });
 
     function updateCount(value) {
         const unreadCount = Number(value) || 0;
@@ -93,7 +160,8 @@ function initializeNotificationCenter(center) {
             updateCount(data.unread_count);
 
             if (notification.url) {
-                window.location.assign(notification.url);
+                const target = new URL(notification.url, window.location.origin);
+                window.location.assign(`${target.pathname}${target.search}${target.hash}`);
                 return;
             }
 

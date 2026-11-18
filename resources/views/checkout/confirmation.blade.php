@@ -56,6 +56,48 @@
             text-decoration: none;
             font-weight: bold;
         }
+        .thank-you-dialog {
+            width: min(440px, calc(100% - 32px));
+            border: 0;
+            border-radius: 12px;
+            padding: 30px 28px;
+            color: #203329;
+            text-align: center;
+            box-shadow: 0 20px 60px rgb(0 0 0 / 25%);
+        }
+        .thank-you-dialog::backdrop { background: rgb(12 35 23 / 58%); }
+        .success-icon {
+            display: grid;
+            width: 54px;
+            height: 54px;
+            margin: 0 auto 14px;
+            place-items: center;
+            border-radius: 50%;
+            background: #15803d;
+            color: #fff;
+            font-size: 32px;
+            font-weight: bold;
+            line-height: 1;
+        }
+        .thank-you-dialog h2 { margin: 0 0 12px; color: #15803d; }
+        .thank-you-dialog p { margin: 0 0 24px; }
+        .thank-you-dialog .dialog-action {
+            display: inline-flex;
+            width: min(100%, 220px);
+            min-height: 46px;
+            align-items: center;
+            justify-content: center;
+            border: 0;
+            border-radius: 8px;
+            background: #15803d;
+            color: white;
+            font: inherit;
+            font-weight: bold;
+            text-decoration: none;
+        }
+        .thank-you-dialog .dialog-action:hover {
+            background: #166534;
+        }
         @media (max-width: 520px) {
             header, footer { padding: 14px 0; }
             main { padding: 22px 0 36px; }
@@ -137,7 +179,7 @@
                     <strong>{{ $item->product_name }}</strong>
                     <div class="muted">
                         {{ $item->quantity }}
-                        {{ $item->unit_type === 'kg' ? 'kg' : 'sack/package' }}
+                        {{ $item->quantity_unit ?: $item->unit_type }}
 
                         @if ($item->unit_type === 'sack' && $item->sack_weight_kg)
                             ({{ $item->sack_weight_kg }} kg each)
@@ -186,13 +228,25 @@
             This page confirms the order record only. It does not mean the
             store has accepted the order or received payment.
         </p>
-        <a class="btn" href="{{ route('home') }}">Return to products</a>
+        <a class="btn" href="{{ route('home') }}" target="_top">Return to products</a>
     </section>
 </main>
 
 <footer>
     <div class="container">H&amp;K Consumer Goods Store</div>
 </footer>
+@if (session('order_just_submitted'))
+    <dialog class="thank-you-dialog" id="thank-you-dialog" aria-labelledby="thank-you-title">
+        <div class="success-icon" aria-hidden="true">✓</div>
+        <h2 id="thank-you-title">Success!</h2>
+        <p>Your order was successful. The store will review and confirm your order.</p>
+        <a class="dialog-action" href="{{ route('home') }}" target="_top">Go back</a>
+    </dialog>
+    <script>
+        const thankYouDialog = document.getElementById('thank-you-dialog');
+        thankYouDialog.showModal();
+    </script>
+@endif
 @include('components.smart-assistant')
 </body>
 </html>

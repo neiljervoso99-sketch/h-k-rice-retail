@@ -117,6 +117,64 @@
         .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
         .button.secondary { color: var(--green-dark); background: white; border: 1px solid var(--border); }
         .button.disabled { opacity: .5; pointer-events: none; }
+        .product-picker {
+            width: min(940px, calc(100% - 28px));
+            max-width: none;
+            max-height: min(85vh, 760px);
+            padding: 22px;
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            color: var(--text);
+            box-shadow: 0 18px 60px #10201555;
+        }
+        .product-picker::backdrop { background: #10201599; }
+        .product-picker-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 14px;
+            margin-bottom: 16px;
+        }
+        .product-picker-header h2 { margin: 0 0 4px; }
+        .product-picker-header p { margin: 0; }
+        .product-picker-close {
+            min-width: 42px;
+            padding: 8px;
+            background: white;
+            color: var(--text);
+            border: 1px solid var(--border);
+            font-size: 1.25rem;
+        }
+        .product-picker-close:hover { background: #f0f6ef; }
+        .product-picker-search { margin-bottom: 16px; }
+        .product-picker-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+            gap: 12px;
+            max-height: 60vh;
+            overflow-y: auto;
+            padding: 2px;
+        }
+        .product-picker-card {
+            display: grid;
+            grid-template-columns: 58px minmax(0, 1fr);
+            align-content: start;
+            gap: 10px 12px;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 9px;
+            background: #fff;
+        }
+        .product-picker-card[hidden] { display: none; }
+        .product-picker-card img,
+        .product-picker-card .add-on-image-placeholder {
+            width: 58px;
+            height: 58px;
+        }
+        .product-picker-card form,
+        .product-picker-card button { grid-column: 1 / -1; width: 100%; }
+        .product-picker-card h3 { overflow-wrap: anywhere; }
+        .product-picker-empty { grid-column: 1 / -1; }
         .empty {
             padding: 32px 20px; border: 1px dashed #cbd7ca;
             border-radius: 14px; background: white; text-align: center;
@@ -144,7 +202,7 @@
     </style>
     @vite('resources/js/app.js')
 </head>
-<body>
+<body data-cart-count="{{ collect(session('cart', []))->sum(fn ($item) => (float) ($item['quantity'] ?? 0)) }}">
 @auth
     <div class="notification-floating">
         @include('components.notification-center')
@@ -211,7 +269,7 @@
                     </p>
 
                     @if (!$isGeneric && $unit === 'kg' && !($item['minimum_met'] ?? false))
-                        <div class="notice warning">Minimum order is 5 kg for rice purchases per kilogram.</div>
+                        <div class="notice warning">Minimum order is 1 kg for rice purchases per kilogram.</div>
                     @endif
 
                     @if (!$item['confirmed'])
@@ -243,14 +301,21 @@
                         </label>
 
                         <label>
+                            Quantity choice
+                            <select class="quantity-preset">
+                                <option value="custom">Custom quantity</option>
+                            </select>
+                        </label>
+
+                        <label>
                             Quantity
                             <input
                                 type="number"
                                 name="quantity"
                                 class="quantity-input"
-                                min="{{ !$isGeneric && $unit === 'kg' ? 5 : ($isGeneric ? 0.01 : 1) }}"
+                                min="{{ $isGeneric || $unit === 'kg' ? '0.01' : '1' }}"
                                 max="1000"
-                                step="{{ $isGeneric ? '0.01' : '1' }}"
+                                step="{{ !$isGeneric && $unit === 'sack' ? '1' : '0.01' }}"
                                 value="{{ $item['quantity'] }}"
                                 required
                             >
@@ -316,7 +381,8 @@
             </p>
 
             <div class="actions">
-                <a class="button secondary" href="{{ route('home') }}">Continue shopping</a>
+                <button class="button secondary" type="button" data-open-product-picker>Add product</button>
+                <a class="button secondary" href="{{ route('home') }}" target="_top">Continue shopping</a>
                 @if ($canProceed)
                     <a class="button" href="{{ route('checkout.create') }}">Proceed to checkout</a>
                 @else
@@ -328,9 +394,63 @@
         <section class="empty">
             <h2>Your cart is empty</h2>
             <p class="muted">Choose products to get started.</p>
-            <a class="button" href="{{ route('home') }}">Browse products</a>
+            <button class="button" type="button" data-open-product-picker>Add product</button>
         </section>
     @endif
+
+    <dialog class="product-picker" id="product-picker" aria-labelledby="product-picker-heading">
+        <div class="product-picker-header">
+            <div>
+                <h2 id="product-picker-heading">Add a product</h2>
+                <p class="muted">Choose an available product to add it to your current cart.</p>
+            </div>
+            <button class="product-picker-close" type="button" data-close-product-picker aria-label="Close product list">&times;</button>
+        </div>
+
+        @if ($availableProducts->isNotEmpty())
+            <label class="product-picker-search">
+                Search products
+                <input type="search" id="product-picker-search" placeholder="Search by product name or brand">
+            </label>
+
+            <div class="product-picker-grid" id="product-picker-grid">
+                @foreach ($availableProducts as $availableItem)
+                    @php
+                        $availableProduct = $availableItem['product'];
+                    @endphp
+                    <article
+                        class="product-picker-card"
+                        data-product-search="{{ strtolower($availableProduct->name . ' ' . ($availableProduct->brand ?? '') . ' ' . ($availableProduct->category ?? '')) }}"
+                    >
+                        @if ($availableProduct->image)
+                            <img src="{{ asset('storage/' . $availableProduct->image) }}" alt="" loading="lazy">
+                        @else
+                            <span class="add-on-image-placeholder" aria-hidden="true">Item</span>
+                        @endif
+
+                        <div class="add-on-details">
+                            <h3>{{ $availableProduct->name }}</h3>
+                            @if ($availableProduct->brand)
+                                <p class="muted">{{ $availableProduct->brand }}</p>
+                            @endif
+                            <p class="muted">{{ $availableItem['stock_text'] }}</p>
+                            <p class="muted">&#8369;{{ number_format($availableItem['price'], 2) }} / {{ $availableItem['unit'] }}</p>
+                        </div>
+
+                        <form method="POST" action="{{ route('cart.add', $availableProduct) }}">
+                            @csrf
+                            <input type="hidden" name="unit" value="{{ $availableItem['unit'] }}">
+                            <input type="hidden" name="quantity" value="{{ $availableItem['quantity'] }}">
+                            <button type="submit">Add {{ $availableProduct->name }}</button>
+                        </form>
+                    </article>
+                @endforeach
+                <p class="muted product-picker-empty" id="product-picker-no-results" hidden>No matching products found.</p>
+            </div>
+        @else
+            <p class="muted">There are no other available products to add right now.</p>
+        @endif
+    </dialog>
 
     @if ($suggestedItems->isNotEmpty())
         <section class="add-ons" aria-labelledby="add-ons-heading">
@@ -371,25 +491,69 @@
 <footer>H&K Consumer Goods · H+K Consumer Goods Store</footer>
 
 <script>
+const productPicker = document.getElementById('product-picker');
+document.querySelectorAll('[data-open-product-picker]').forEach(button => {
+    button.addEventListener('click', () => productPicker?.showModal());
+});
+document.querySelector('[data-close-product-picker]')?.addEventListener('click', () => productPicker?.close());
+productPicker?.addEventListener('click', event => {
+    if (event.target === productPicker) productPicker.close();
+});
+
+const productSearch = document.getElementById('product-picker-search');
+productSearch?.addEventListener('input', () => {
+    const query = productSearch.value.trim().toLowerCase();
+    const cards = Array.from(document.querySelectorAll('.product-picker-card'));
+    let visibleCount = 0;
+    cards.forEach(card => {
+        const matches = card.dataset.productSearch.includes(query);
+        card.hidden = !matches;
+        if (matches) visibleCount++;
+    });
+    const noResults = document.getElementById('product-picker-no-results');
+    if (noResults) noResults.hidden = visibleCount > 0;
+});
+
 document.querySelectorAll('.cart-update-form').forEach(form => {
     const unitSelect = form.querySelector('.unit-select');
     const quantityInput = form.querySelector('.quantity-input');
+    const quantityPreset = form.querySelector('.quantity-preset');
     const isGeneric = unitSelect.dataset.generic === '1';
 
     function updateRules(reset = false) {
         const unit = unitSelect.value;
-        const minimum = !isGeneric && unit === 'kg' ? 5 : (isGeneric ? 0.01 : 1);
+        const isSack = !isGeneric && unit === 'sack';
+        const minimum = isSack ? 1 : 0.01;
         quantityInput.min = String(minimum);
-        quantityInput.step = isGeneric ? '0.01' : '1';
+        quantityInput.step = isSack ? '1' : '0.01';
+
+        const unitName = isGeneric
+            ? unitSelect.options[unitSelect.selectedIndex].text
+            : (isSack ? 'sack' : 'kg');
+        quantityPreset.replaceChildren();
+        if (!isSack) {
+            quantityPreset.add(new Option('Half ' + unitName, '0.5'));
+        }
+        quantityPreset.add(new Option('1 ' + unitName, '1'));
+        quantityPreset.add(new Option('2 x ' + unitName, '2'));
+        quantityPreset.add(new Option('Custom quantity', 'custom'));
 
         let value = Number(quantityInput.value);
         if (reset || !Number.isFinite(value) || value < minimum) {
-            value = minimum;
+            value = 1;
         }
         quantityInput.value = String(value);
+        quantityPreset.value = quantityPreset.querySelector('option[value="' + value + '"]')
+            ? String(value)
+            : 'custom';
     }
 
     unitSelect.addEventListener('change', () => updateRules(true));
+    quantityPreset.addEventListener('change', () => {
+        if (quantityPreset.value !== 'custom') {
+            quantityInput.value = quantityPreset.value;
+        }
+    });
 
     quantityInput.addEventListener('change', () => {
         const minimum = Number(quantityInput.min);
@@ -397,8 +561,15 @@ document.querySelectorAll('.cart-update-form').forEach(form => {
         let value = Number(quantityInput.value);
         if (!Number.isFinite(value)) value = minimum;
         value = Math.min(maximum, Math.max(minimum, value));
-        if (!isGeneric) value = Math.floor(value);
+        if (!(!isGeneric && unitSelect.value === 'sack')) {
+            value = Math.round(value * 100) / 100;
+        } else {
+            value = Math.floor(value);
+        }
         quantityInput.value = String(value);
+        quantityPreset.value = quantityPreset.querySelector('option[value="' + value + '"]')
+            ? String(value)
+            : 'custom';
     });
 });
 </script>

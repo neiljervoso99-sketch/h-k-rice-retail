@@ -4,10 +4,10 @@ namespace App\Models;
 
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class User extends Authenticatable
 {
@@ -20,6 +20,7 @@ class User extends Authenticatable
         'password',
         'phone',
         'profile_picture',
+        'staff_permissions',
     ];
 
     protected $hidden = [
@@ -34,6 +35,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             'is_admin' => 'boolean',
             'role' => 'string',
+            'staff_permissions' => 'array',
         ];
     }
 
@@ -49,12 +51,27 @@ class User extends Authenticatable
 
     public function isStaff(): bool
     {
-        return $this->role === 'staff' && !$this->is_admin;
+        return $this->role === 'staff' && ! $this->is_admin;
+    }
+
+    public function hasStaffPermission(string $permission): bool
+    {
+        if ($this->isAdmin() || in_array($permission, ['dashboard', 'profile'], true)) {
+            return true;
+        }
+
+        $permissions = $this->staff_permissions ?? [
+            'sales',
+            'manual_transactions',
+        ];
+
+        return $this->isStaff()
+            && in_array($permission, $permissions, true);
     }
 
     public function isCustomer(): bool
     {
-        return $this->role === 'customer' && !$this->is_admin;
+        return $this->role === 'customer' && ! $this->is_admin;
     }
 
     public function orders(): HasMany
@@ -70,6 +87,11 @@ class User extends Authenticatable
     public function assignedOrders(): HasMany
     {
         return $this->hasMany(Order::class, 'rider_id');
+    }
+
+    public function cashRegisterShifts(): HasMany
+    {
+        return $this->hasMany(CashRegisterShift::class, 'opened_by');
     }
 
     public function loginHistories(): HasMany

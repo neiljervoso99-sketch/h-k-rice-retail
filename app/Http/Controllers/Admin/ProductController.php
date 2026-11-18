@@ -3,11 +3,12 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\OrderItem;
 use App\Models\Product;
+use App\Models\ProductReview;
 use App\Models\ProductSellingUnit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -18,6 +19,10 @@ class ProductController extends Controller
         $products = Product::with('sellingUnits')
             ->orderBy('name')
             ->get();
+        $reviews = ProductReview::query()
+            ->with(['product:id,name', 'user:id,name', 'order:id,order_number'])
+            ->latest()
+            ->paginate(20, ['*'], 'reviews_page');
 
         $activeProducts = Product::where('is_active', true);
 
@@ -64,6 +69,7 @@ class ProductController extends Controller
 
         return view('admin.products.index', compact(
             'products',
+            'reviews',
             'totalRiceStockKg',
             'lowStockCount',
             'outOfStockCount'
@@ -712,29 +718,16 @@ class ProductController extends Controller
 
     public function destroy(Product $product)
     {
-        $hasOrderHistory = OrderItem::where(
-            'product_id',
-            $product->id
-        )->exists();
-
-        if ($hasOrderHistory) {
-            $product->update(['is_active' => false]);
-
-            return redirect()
-                ->route('admin.dashboard')
-                ->with(
-                    'success',
-                    $product->name.
-                    ' was hidden from the store because it has order history. Past orders were preserved.'
-                );
+        $name = $product->name;
+        $imagePath = $product->image;
+        $product->delete();
+        if ($imagePath) {
+            Storage::disk('public')->delete($imagePath);
         }
 
-        $name = $product->name;
-        $product->delete();
-
         return redirect()
-            ->route('admin.dashboard')
-            ->with('success', $name.' was permanently deleted.');
+            ->route('admin.products.index')
+            ->with('success', $name.' was permanently removed. Past order and inventory records were preserved.');
     }
 
     public function bulk(Request $request)
@@ -751,13 +744,13 @@ class ProductController extends Controller
         ]);
 
         $removed = 0;
-        $hidden = 0;
         $updated = 0;
+        $imagePaths = [];
 
         DB::transaction(function () use (
             $validated,
             &$removed,
-            &$hidden,
+            &$imagePaths,
             &$updated
         ) {
             $products = Product::query()
@@ -780,23 +773,20 @@ class ProductController extends Controller
                     continue;
                 }
 
-                if (OrderItem::where('product_id', $product->id)->exists()) {
-                    $product->update(['is_active' => false]);
-                    $hidden++;
-
-                    continue;
+                if ($product->image) {
+                    $imagePaths[] = $product->image;
                 }
 
                 $product->delete();
                 $removed++;
             }
         });
+        Storage::disk('public')->delete($imagePaths);
 
         $message = match ($validated['action']) {
             'activate' => "$updated product(s) activated.",
             'deactivate' => "$updated product(s) deactivated.",
-            default => "$removed product(s) permanently removed; "
-            ."$hidden product(s) with order history were deactivated.",
+            default => "$removed product(s) permanently removed. Past order and inventory records were preserved.",
         };
 
         return redirect()

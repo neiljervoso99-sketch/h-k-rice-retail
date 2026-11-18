@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Http\Controllers\Controller;
 use App\Models\ActivityLog;
 use App\Models\LoginHistory;
-use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
@@ -31,16 +31,21 @@ class LoginController extends Controller
     public function login(Request $request)
     {
         $credentials = $request->validate([
-            'email' => ['required', 'email'],
+            'email' => ['required', 'string', 'max:255'],
             'password' => ['required', 'string'],
         ]);
 
-        if (!Auth::attempt(
-            $credentials,
-            $request->boolean('remember')
-        )) {
+        $identifier = trim($credentials['email']);
+        $loginField = filter_var($identifier, FILTER_VALIDATE_EMAIL)
+            ? 'email'
+            : 'phone';
+
+        if (! Auth::attempt([
+            $loginField => $identifier,
+            'password' => $credentials['password'],
+        ], $request->boolean('remember'))) {
             throw ValidationException::withMessages([
-                'email' => 'Invalid email or password.',
+                'email' => 'Invalid email/number or password.',
             ]);
         }
 
@@ -72,7 +77,7 @@ class LoginController extends Controller
 
             // Only redirect to a URL on the current host.
             if (
-                !$intendedHost ||
+                ! $intendedHost ||
                 strcasecmp($intendedHost, $currentHost) === 0
             ) {
                 return redirect()->to($intendedUrl);

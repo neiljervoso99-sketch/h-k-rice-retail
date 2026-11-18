@@ -19,6 +19,7 @@ class InventoryMovement extends Model
         'notes',
         'created_by',
         'delivery_reference',
+        'purchase_order_receipt_item_id',
     ];
 
     protected function casts(): array
@@ -39,5 +40,10 @@ class InventoryMovement extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function purchaseOrderReceiptItem(): BelongsTo
+    {
+        return $this->belongsTo(PurchaseOrderReceiptItem::class);
     }
 }

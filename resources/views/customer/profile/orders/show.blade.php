@@ -232,7 +232,7 @@
 
                 <p class="muted">
                     Quantity: {{ $item->quantity }}
-                    {{ $item->unit_type === 'sack' ? 'sack(s)' : 'unit(s)' }}
+                    {{ $item->quantity_unit ?: $item->unit_type }}
                     @if ($item->quantity_kg)
                         · {{ $item->quantity_kg }} kg
                     @endif

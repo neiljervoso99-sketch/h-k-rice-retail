@@ -11,6 +11,7 @@ class Order extends Model
     protected $fillable = [
         'order_number',
         'user_id',
+        'cash_register_shift_id',
         'recipient_name',
         'phone',
         'address_line',
@@ -46,7 +47,7 @@ class Order extends Model
         'delivery_notes',
         'inventory_deducted_at',
         'delivery_proof_path',
-'delivery_proof_uploaded_at',
+        'delivery_proof_uploaded_at',
     ];
 
     protected function casts(): array
@@ -86,6 +87,11 @@ class Order extends Model
     public function customer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function cashRegisterShift(): BelongsTo
+    {
+        return $this->belongsTo(CashRegisterShift::class);
     }
 
     public function rider(): BelongsTo

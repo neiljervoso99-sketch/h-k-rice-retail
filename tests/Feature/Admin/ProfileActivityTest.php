@@ -6,7 +6,9 @@ use App\Models\ActivityLog;
 use App\Models\LoginHistory;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class ProfileActivityTest extends TestCase
@@ -28,8 +30,39 @@ class ProfileActivityTest extends TestCase
                 ->assertSee('Security')
                 ->assertSee('Login History')
                 ->assertSee('Activity Log')
-                ->assertSee('role="tablist"', false);
+                ->assertSee('role="tablist"', false)
+                ->assertSee('Click your photo to choose or replace it.')
+                ->assertSee('profile-picture-picker', false);
         }
+    }
+
+    public function test_profile_picture_upload_is_saved_and_displayed_in_the_header_and_profile(): void
+    {
+        Storage::fake('public');
+        $user = User::factory()->create([
+            'role' => 'admin',
+            'is_admin' => true,
+        ]);
+
+        $this->actingAs($user)
+            ->patch(route('admin.profile.update'), [
+                'name' => $user->name,
+                'email' => $user->email,
+                'phone' => $user->phone,
+                'profile_picture' => UploadedFile::fake()->image('admin-avatar.png'),
+            ])
+            ->assertRedirect(route('admin.profile.edit'));
+
+        $profilePicture = $user->fresh()->profile_picture;
+        $this->assertNotNull($profilePicture);
+        Storage::disk('public')->assertExists($profilePicture);
+
+        $this->get(route('admin.profile.edit'))
+            ->assertOk()
+            ->assertSee(url('/storage/'.$profilePicture), false)
+            ->assertSee('Your profile picture')
+            ->assertSee('profile-dropdown-avatar', false)
+            ->assertDontSee('viewBox="0 0 20 20"', false);
     }
 
     public function test_profile_changes_are_recorded_in_the_activity_trail(): void

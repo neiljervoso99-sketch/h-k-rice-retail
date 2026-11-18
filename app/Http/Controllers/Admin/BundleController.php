@@ -65,17 +65,16 @@ class BundleController extends Controller
 
     private function validateBundleLine(?Product $product, string $unit, float $quantity): void
     {
-        if (!$product || !$product->is_active || !$product->price_confirmed) {
+        if (! $product || ! $product->is_active || ! $product->price_confirmed) {
             throw ValidationException::withMessages(['items' => 'Every bundle item must be active with a confirmed price.']);
         }
 
         if (($product->inventory_type ?? 'rice') === 'generic') {
-            $sellingUnit = $product->sellingUnits->first(fn (ProductSellingUnit $candidate) =>
-                $candidate->is_active && strtolower($candidate->unit_name) === strtolower($unit)
+            $sellingUnit = $product->sellingUnits->first(fn (ProductSellingUnit $candidate) => $candidate->is_active && strtolower($candidate->unit_name) === strtolower($unit)
             );
             $factor = (float) ($sellingUnit?->conversion_factor ?? 0);
 
-            if (!$sellingUnit || (float) $sellingUnit->selling_price <= 0 || $factor <= 0 || $quantity * $factor > (float) $product->stock_base_quantity) {
+            if ($quantity < 0.01 || ! $sellingUnit || (float) $sellingUnit->selling_price <= 0 || $factor <= 0 || $quantity * $factor > (float) $product->stock_base_quantity) {
                 throw ValidationException::withMessages(['items' => "The selected unit or stock is unavailable for {$product->name}."]);
             }
 
@@ -92,7 +91,7 @@ class BundleController extends Controller
 
         if (
             $price <= 0
-            || ($unit === 'kg' && $quantity < 5)
+            || ($unit === 'kg' && $quantity < 0.01)
             || ($unit === 'sack' && floor($quantity) !== $quantity)
             || $quantityKg <= 0
             || $quantityKg > (float) $product->stock_kg

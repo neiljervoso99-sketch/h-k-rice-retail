@@ -3,57 +3,239 @@
 @section('title', 'Add Product')
 
 @section('content')
+@php
+    $initialRiceProduct = preg_match('/\brice\b/i', (string) old('category', '')) === 1
+        || filled(old('rice_type'));
+    $initialInventoryType = $initialRiceProduct ? 'rice' : 'generic';
+    $baseUnit = strtolower(trim((string) old('base_unit', 'piece')));
+    $oldSellingUnits = old('selling_units', []);
+    $baseSellingUnit = null;
+
+    foreach ($oldSellingUnits as $key => $unit) {
+        if (
+            strtolower(trim((string) ($unit['unit_name'] ?? ''))) === $baseUnit
+            && abs((float) ($unit['conversion_factor'] ?? 0) - 1) < 0.000001
+        ) {
+            $baseSellingUnit = $unit;
+            unset($oldSellingUnits[$key]);
+            break;
+        }
+    }
+
+    $oldSellingUnits = array_values($oldSellingUnits);
+@endphp
+
 <style>
-    :root[data-theme="dark"] .product-create-page {
+    .product-create-page {
+        max-width: 1080px;
+        margin: 0 auto;
+    }
+
+    .product-create-page .create-heading {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 20px;
+    }
+
+    .product-create-page .create-heading h1 {
+        margin: 0 0 6px;
+        color: #203f2b;
+        font-size: 26px;
+    }
+
+    .product-create-page .create-heading p,
+    .product-create-page .field-help {
+        margin: 0;
+        color: #657568;
+        font-size: 13px;
+        line-height: 1.5;
+    }
+
+    .product-create-page .form-panel {
+        padding: 22px;
+        margin-bottom: 16px;
+        border: 1px solid #e1e8df;
+        border-radius: 12px;
+        background: #fff;
+    }
+
+    .product-create-page .form-panel h2 {
+        margin: 0 0 6px;
+        color: #244d34;
+        font-size: 18px;
+    }
+
+    .product-create-page .panel-help {
+        margin: 0 0 18px;
+        color: #657568;
+        font-size: 13px;
+        line-height: 1.5;
+    }
+
+    .product-create-page .fields {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+    }
+
+    .product-create-page .field {
+        min-width: 0;
+    }
+
+    .product-create-page .field label {
+        display: block;
+        margin-bottom: 6px;
+        color: #354c3b;
+        font-size: 13px;
+        font-weight: 700;
+    }
+
+    .product-create-page .field input,
+    .product-create-page .field select,
+    .product-create-page .field textarea {
+        width: 100%;
+        min-height: 42px;
+        padding: 10px 12px;
+        border: 1px solid #cbd5ca;
+        border-radius: 7px;
+        background: #fff;
+        color: #263b2b;
+    }
+
+    .product-create-page .field textarea {
+        min-height: 90px;
+        resize: vertical;
+    }
+
+    .product-create-page .field-help {
+        display: block;
+        margin-top: 5px;
+    }
+
+    .product-create-page .product-type-badge {
+        display: inline-flex;
+        align-items: center;
+        min-height: 28px;
+        padding: 4px 10px;
+        border-radius: 20px;
+        background: #edf4ec;
+        color: #315a3d;
+        font-size: 12px;
+        font-weight: 700;
+    }
+
+    .product-create-page .selling-unit-row {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
+        align-items: end;
+        gap: 10px;
+        padding: 14px;
+        margin: 12px 0;
+        border: 1px solid #e1e8df;
+        border-radius: 9px;
+        background: #f9fbf9;
+    }
+
+    .product-create-page .optional-settings {
+        margin-top: 14px;
+        border: 1px solid #e1e8df;
+        border-radius: 9px;
+        background: #fff;
+    }
+
+    .product-create-page .optional-settings summary {
+        padding: 13px 15px;
+        color: #315a3d;
+        font-weight: 700;
+        cursor: pointer;
+    }
+
+    .product-create-page .optional-settings-content {
+        padding: 4px 15px 15px;
+    }
+
+    .product-create-page .form-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 18px;
+    }
+
+    :root[data-theme="dark"] .product-create-page .create-heading h1,
+    :root[data-theme="dark"] .product-create-page .form-panel h2 {
         color: #ecf1ff;
     }
 
-    :root[data-theme="dark"] .product-create-page h1,
-    :root[data-theme="dark"] .product-create-page h5 {
-        color: #ecf1ff;
-    }
-
-    :root[data-theme="dark"] .product-create-page .form-label,
-    :root[data-theme="dark"] .product-create-page label {
-        color: #d3dbed;
-    }
-
-    :root[data-theme="dark"] .product-create-page .text-muted {
-        color: #aab6cb !important;
-    }
-
-    :root[data-theme="dark"] .product-create-page .form-control,
-    :root[data-theme="dark"] .product-create-page input,
-    :root[data-theme="dark"] .product-create-page select,
-    :root[data-theme="dark"] .product-create-page textarea {
-        border-color: #3a465e;
-        background-color: #11192a;
-        color: #ecf1ff;
-    }
-
-    :root[data-theme="dark"] .product-create-page .card {
+    :root[data-theme="dark"] .product-create-page .form-panel,
+    :root[data-theme="dark"] .product-create-page .optional-settings {
         border-color: #293149;
         background: #131b2e;
         color: #ecf1ff;
     }
 
-    :root[data-theme="dark"] .product-create-page hr {
-        border-color: #3a465e;
+    :root[data-theme="dark"] .product-create-page .field label,
+    :root[data-theme="dark"] .product-create-page .optional-settings summary {
+        color: #d3dbed;
     }
 
-    :root[data-theme="dark"] .product-create-page .alert-danger {
+    :root[data-theme="dark"] .product-create-page .create-heading p,
+    :root[data-theme="dark"] .product-create-page .panel-help,
+    :root[data-theme="dark"] .product-create-page .field-help {
+        color: #aab6cb;
+    }
+
+    :root[data-theme="dark"] .product-create-page .field input,
+    :root[data-theme="dark"] .product-create-page .field select,
+    :root[data-theme="dark"] .product-create-page .field textarea {
+        border-color: #3a465e;
+        background: #11192a;
+        color: #ecf1ff;
+    }
+
+    :root[data-theme="dark"] .product-create-page .selling-unit-row {
+        border-color: #293149;
+        background: #10182a;
+    }
+
+    :root[data-theme="dark"] .product-create-page .notice.error {
         border-color: #653b42;
         background: #332027;
         color: #ffb4ad;
     }
+
+    @media (max-width: 760px) {
+        .product-create-page .selling-unit-row {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    @media (max-width: 560px) {
+        .product-create-page .fields,
+        .product-create-page .selling-unit-row {
+            grid-template-columns: minmax(0, 1fr);
+        }
+
+        .product-create-page .create-heading {
+            display: block;
+        }
+    }
 </style>
 
-<div class="container product-create-page">
-    <h1>Add Product</h1>
+<div class="product-create-page">
+    <div class="create-heading">
+        <div>
+            <h1>Add Product</h1>
+            <p>Enter the basic product details and pricing. The inventory type is selected automatically.</p>
+        </div>
+        <a href="{{ route('admin.products.index') }}" class="button button-secondary">Cancel</a>
+    </div>
 
     @if ($errors->any())
-        <div class="alert alert-danger">
-            <ul class="mb-0">
+        <div class="notice error" role="alert">
+            <strong>Please review the following errors:</strong>
+            <ul>
                 @foreach ($errors->all() as $error)
                     <li>{{ $error }}</li>
                 @endforeach
@@ -61,475 +243,288 @@
         </div>
     @endif
 
-    <form method="POST"
-          action="{{ route('admin.products.store') }}"
-          enctype="multipart/form-data">
+    <form method="POST" action="{{ route('admin.products.store') }}" enctype="multipart/form-data">
         @csrf
+        <input id="inventory_type" type="hidden" name="inventory_type" value="{{ $initialInventoryType }}">
 
-        <input id="inventory_type" type="hidden" name="inventory_type" value="generic">
-
-        <div class="mb-3">
-            <label class="form-label">Product Type</label>
-            <div class="form-control" id="detected-product-type" aria-live="polite">
-                Generic Product
-            </div>
-            <small class="text-muted">
-                Awtomatikong pipiliin ang Rice kapag ang category ay may salitang “rice” o may Rice Type. Iba pang category ay gagamit ng generic inventory at unit.
-            </small>
-        </div>
-
-        <div class="mb-3">
-            <label for="name" class="form-label">Product Name *</label>
-            <input id="name" name="name" class="form-control"
-                   value="{{ old('name') }}" required>
-        </div>
-
-        <div class="mb-3">
-            <label for="brand" class="form-label">Brand (Optional)</label>
-            <input id="brand" name="brand" class="form-control"
-                   value="{{ old('brand') }}">
-        </div>
-
-        <div class="mb-3">
-            <label for="category" class="form-label">Category</label>
-            <input name="category" id="category" class="form-control"
-                   value="{{ old('category') }}"
-                   placeholder="Rice, Groceries, Drinks, Snacks, Eggs">
-        </div>
-
-        <div class="row g-3">
-            <div class="col-md-6 mb-3">
-                <label for="variant_size" class="form-label">Size / Pack Variant (Optional)</label>
-                <input name="variant_size" id="variant_size" class="form-control" maxlength="80" value="{{ old('variant_size') }}" placeholder="e.g. 5 kg, Large">
-            </div>
-            <div class="col-md-6 mb-3">
-                <label for="variant_color" class="form-label">Color Variant (Optional)</label>
-                <input name="variant_color" id="variant_color" class="form-control" maxlength="80" value="{{ old('variant_color') }}" placeholder="e.g. Red, Blue">
-            </div>
-        </div>
-
-        <div class="mb-3">
-            <label for="image" class="form-label">Product Image</label>
-            <input type="file" name="image" id="image"
-                   class="form-control"
-                   accept="image/*">
-            <small class="text-muted">Any supported image format, up to 10 MB. You can also add or replace the image after creating the product.</small>
-        </div>
-
-        {{-- Rice-specific fields --}}
-        <div id="rice-fields">
-            <h5 class="mt-4">Rice Details</h5>
-
-            <div class="mb-3">
-                <label for="rice_type" class="form-label">Rice Type</label>
-                <input id="rice_type" name="rice_type" class="form-control"
-                       value="{{ old('rice_type') }}">
-            </div>
-
-            <div class="mb-3">
-                <label for="sack_weight_kg" class="form-label">Sack Weight (kg) *</label>
-                <input id="sack_weight_kg" type="number"
-                       min="0.01" max="1000" step="0.01"
-                       name="sack_weight_kg" class="form-control"
-                       value="{{ old('sack_weight_kg') }}">
-            </div>
-
-            <div class="mb-3">
-                <label for="price_per_kg" class="form-label">Price per Kilogram (₱) *</label>
-                <input id="price_per_kg" type="number" step="0.01" min="0.01"
-                       name="price_per_kg" class="form-control"
-                       value="{{ old('price_per_kg') }}">
-            </div>
-
-            <div class="mb-3">
-                <label for="price_per_sack" class="form-label">Price per Sack (₱) *</label>
-                <input id="price_per_sack" type="number" step="0.01" min="0.01"
-                       name="price_per_sack" class="form-control"
-                       value="{{ old('price_per_sack') }}">
-            </div>
-
-            <div class="mb-3">
-                <label for="cost_per_sack" class="form-label">Cost per Sack (₱) *</label>
-                <input id="cost_per_sack" type="number" step="0.01" min="0.01"
-                       name="cost_per_sack" class="form-control"
-                       value="{{ old('cost_per_sack') }}" required>
-            </div>
-        </div>
-
-        {{-- Generic product fields --}}
-        <div id="generic-fields" hidden>
-            <h5 class="mt-4">Inventory and Pricing</h5>
-
-            <div class="mb-3">
-                <label for="base_unit" class="form-label">
-                    Base Inventory Unit *
-                </label>
-                <input
-                    id="base_unit"
-                    name="base_unit"
-                    type="text"
-                    class="form-control"
-                    maxlength="20"
-                    pattern="[a-zA-Z0-9 _-]+"
-                    value="{{ old('base_unit', 'piece') }}"
-                    placeholder="e.g. piece, gram, ml"
-                >
-                <small class="text-muted">
-                    Ito ang pinakamaliit na unit kung saan sinusukat ang lahat ng stock.
-                    Halimbawa: piece, gram, o ml.
-                </small>
-            </div>
-
-            <div class="mb-3">
-                <label for="initial_stock_quantity" class="form-label">
-                    Initial Stock Quantity *
-                </label>
-                <input
-                    id="initial_stock_quantity"
-                    name="initial_stock_quantity"
-                    type="number"
-                    class="form-control"
-                    min="0"
-                    max="1000000"
-                    step="0.001"
-                    value="{{ old('initial_stock_quantity', 0) }}"
-                >
-                <small class="text-muted">
-                    Ilagay ang panimulang stock gamit ang base unit sa itaas.
-                </small>
-            </div>
-
-            <hr>
-
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="mb-0">Selling Units</h5>
-                <button type="button" id="add-selling-unit" class="btn btn-outline-primary btn-sm">
-                    + Add Selling Unit
-                </button>
-            </div>
-
-            <p class="text-muted">
-                Ang conversion factor ay kung ilang base units ang katumbas ng isang
-                selling unit. Halimbawa, kung piece ang base unit, ang isang dozen ay 12.
+        <section class="form-panel">
+            <h2>Product Details</h2>
+            <p class="panel-help">
+                Product type:
+                <span class="product-type-badge" id="detected-product-type" aria-live="polite">
+                    {{ $initialRiceProduct ? 'Rice Product' : 'Generic Product' }}
+                </span>
+                All other categories use generic inventory.
             </p>
 
-            <div id="selling-units-container">
-                @php
-                    $oldSellingUnits = old('selling_units', [
-                        [
-                            'unit_name' => 'piece',
-                            'conversion_factor' => '1',
-                            'selling_price' => '',
-                            'cost_price' => '',
-                        ],
-                    ]);
-                @endphp
-
-                @foreach ($oldSellingUnits as $i => $unit)
-                    <div class="card mb-3 selling-unit-row">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-                                <strong>Selling Unit</strong>
-                                <button type="button" class="btn btn-outline-danger btn-sm remove-selling-unit">
-                                    Remove
-                                </button>
-                            </div>
-
-                            <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <label class="form-label">Unit Name *</label>
-                                    <input
-                                        name="selling_units[{{ $i }}][unit_name]"
-                                        class="form-control"
-                                        maxlength="30"
-                                        pattern="[a-zA-Z0-9 _-]+"
-                                        value="{{ $unit['unit_name'] ?? '' }}"
-                                        placeholder="e.g. piece, dozen, box"
-                                        required
-                                    >
-                                </div>
-
-                                <div class="col-md-6 mb-3">
-                                    <label class="form-label">Conversion Factor *</label>
-                                    <input
-                                        name="selling_units[{{ $i }}][conversion_factor]"
-                                        type="number"
-                                        class="form-control"
-                                        min="0.000001"
-                                        max="100000000"
-                                        step="any"
-                                        value="{{ $unit['conversion_factor'] ?? '' }}"
-                                        required
-                                    >
-                                </div>
-
-                                <div class="col-md-6 mb-3">
-                                    <label class="form-label">Selling Price (₱) *</label>
-                                    <input
-                                        name="selling_units[{{ $i }}][selling_price]"
-                                        type="number"
-                                        class="form-control"
-                                        min="0.01"
-                                        max="9999999.99"
-                                        step="0.01"
-                                        value="{{ $unit['selling_price'] ?? '' }}"
-                                        required
-                                    >
-                                </div>
-
-                                <div class="col-md-6 mb-3">
-                                    <label class="form-label">Cost Price (₱) *</label>
-                                    <input
-                                        name="selling_units[{{ $i }}][cost_price]"
-                                        type="number"
-                                        class="form-control"
-                                        min="0.01"
-                                        max="9999999.99"
-                                        step="0.01"
-                                        value="{{ $unit['cost_price'] ?? '' }}"
-                                        required
-                                    >
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                @endforeach
+            <div class="fields">
+                <div class="field">
+                    <label for="name">Product Name *</label>
+                    <input id="name" name="name" maxlength="255" value="{{ old('name') }}" required>
+                </div>
+                <div class="field">
+                    <label for="category">Category</label>
+                    <input id="category" name="category" maxlength="255" value="{{ old('category') }}" placeholder="Rice, Groceries, Drinks">
+                    <small class="field-help">A category containing “rice” automatically selects Rice as the product type.</small>
+                </div>
+                <div class="field">
+                    <label for="rice_type">Rice Type (optional)</label>
+                    <input id="rice_type" name="rice_type" maxlength="255" value="{{ old('rice_type') }}" placeholder="Jasmine, Dinorado">
+                    <small class="field-help">Entering a rice type automatically selects Rice as the product type.</small>
+                </div>
+                <div class="field">
+                    <label for="brand">Brand (optional)</label>
+                    <input id="brand" name="brand" maxlength="255" value="{{ old('brand') }}">
+                </div>
+                <div class="field">
+                    <label for="image">Product Image (optional)</label>
+                    <input id="image" type="file" name="image" accept="image/*">
+                    <small class="field-help">Supported image formats, up to 10 MB.</small>
+                </div>
             </div>
-        </div>
+        </section>
 
-        <div class="mb-3">
-            <label for="profit_percentage" class="form-label">
-            Profit Percentage (%) *
-            </label>
-            <input id="profit_percentage" type="number" step="0.01" min="0"
-                   name="profit_percentage" class="form-control"
-               value="{{ old('profit_percentage', 15) }}" required>
-            <small class="text-muted">
-                Defaults to 15% when left blank.
-            </small>
-        </div>
+        <section id="rice-fields" class="form-panel" @if (!$initialRiceProduct) hidden @endif>
+            <h2>Rice Pricing</h2>
+            <p class="panel-help">Enter the sack weight and selling prices by kilogram and sack.</p>
+            <div class="fields">
+                <div class="field">
+                    <label for="sack_weight_kg">Sack Weight (kg) *</label>
+                    <input id="sack_weight_kg" type="number" min="1" max="1000" step="1" name="sack_weight_kg" value="{{ old('sack_weight_kg') }}">
+                </div>
+                <div class="field">
+                    <label for="price_per_kg">Selling Price per kg (₱) *</label>
+                    <input id="price_per_kg" type="number" min="0.01" max="9999999.99" step="0.01" name="price_per_kg" value="{{ old('price_per_kg') }}">
+                </div>
+                <div class="field">
+                    <label for="price_per_sack">Selling Price per Sack (₱) *</label>
+                    <input id="price_per_sack" type="number" min="0.01" max="9999999.99" step="0.01" name="price_per_sack" value="{{ old('price_per_sack') }}">
+                </div>
+                <div class="field">
+                    <label for="cost_per_sack">Cost per Sack (₱) *</label>
+                    <input id="cost_per_sack" type="number" min="0.01" max="9999999.99" step="0.01" name="cost_per_sack" value="{{ old('cost_per_sack') }}">
+                </div>
+            </div>
+        </section>
 
-        <div class="mb-3">
-            <label for="low_stock_threshold" class="form-label">
-                Low Stock Threshold (<span id="threshold-unit">kg</span>) *
-            </label>
-            <input id="low_stock_threshold" type="number"
-                   step="0.01" min="0"
-                   name="low_stock_threshold" class="form-control"
-                   value="{{ old('low_stock_threshold', 20) }}" required>
-        </div>
+        <section id="generic-fields" class="form-panel" @if ($initialRiceProduct) hidden @endif>
+            <h2>Inventory and Pricing</h2>
+            <p class="panel-help">Inventory is measured in the base unit. You can create a product without adding extra selling units.</p>
 
-        <div class="mb-3">
-            <label for="description" class="form-label">Description</label>
-            <textarea id="description" name="description"
-                      class="form-control">{{ old('description') }}</textarea>
-        </div>
+            <div class="fields">
+                <div class="field">
+                    <label for="base_unit">Base Inventory Unit *</label>
+                    <input id="base_unit" name="base_unit" maxlength="20" pattern="[a-zA-Z0-9 _-]+" value="{{ $baseUnit }}" placeholder="piece, gram, ml">
+                    <small class="field-help">The smallest unit used to measure inventory.</small>
+                </div>
+                <div class="field">
+                    <label for="initial_stock_quantity">Initial Stock (<span id="base-unit-stock-label">{{ $baseUnit ?: 'base unit' }}</span>) *</label>
+                    <input id="initial_stock_quantity" name="initial_stock_quantity" type="number" min="0" max="1000000" step="0.001" value="{{ old('initial_stock_quantity', 0) }}">
+                </div>
+                <div class="field">
+                    <label for="base-selling-price">Selling Price per <span id="base-unit-price-label">{{ $baseUnit ?: 'base unit' }}</span> (₱) *</label>
+                    <input id="base-selling-price" name="selling_units[0][selling_price]" type="number" min="0.01" max="9999999.99" step="0.01" value="{{ old('selling_units.0.selling_price', $baseSellingUnit['selling_price'] ?? '') }}">
+                </div>
+                <div class="field">
+                    <label for="base-cost-price">Cost per <span id="base-unit-cost-label">{{ $baseUnit ?: 'base unit' }}</span> (₱) *</label>
+                    <input id="base-cost-price" name="selling_units[0][cost_price]" type="number" min="0.01" max="9999999.99" step="0.01" value="{{ old('selling_units.0.cost_price', $baseSellingUnit['cost_price'] ?? '') }}">
+                </div>
+            </div>
 
-        <div class="mb-3">
-            <label for="qr_code" class="form-label">Product QR Code (Optional)</label>
-            <input id="qr_code" name="qr_code" class="form-control"
-                   value="{{ old('qr_code') }}">
-        </div>
+            <input id="base-selling-unit-name" type="hidden" name="selling_units[0][unit_name]" value="{{ $baseUnit }}">
+            <input type="hidden" name="selling_units[0][conversion_factor]" value="1">
 
-        <div class="mb-3">
-            <label for="is_active" class="form-label">Store Status *</label>
-            <select id="is_active" name="is_active" class="form-select" required>
-                <option value="0" @selected(old('is_active', '1') == '0')>
-                    Inactive
-                </option>
-                <option value="1" @selected(old('is_active', '1') == '1')>
-                    Active
-                </option>
-            </select>
-        </div>
+            <details class="optional-settings" id="extra-selling-units">
+                <summary>Add another selling unit (optional)</summary>
+                <div class="optional-settings-content">
+                    <p class="panel-help">Example: one dozen equals 12 pieces. Skip this if you only sell by the base unit.</p>
+                    <div id="selling-units-container">
+                        @foreach ($oldSellingUnits as $index => $unit)
+                            @php($fieldIndex = $index + 1)
+                            <div class="selling-unit-row">
+                                <div class="field">
+                                    <label>Selling Unit Name *</label>
+                                    <input name="selling_units[{{ $fieldIndex }}][unit_name]" maxlength="30" pattern="[a-zA-Z0-9 _-]+" value="{{ $unit['unit_name'] ?? '' }}" placeholder="dozen, box" required>
+                                </div>
+                                <div class="field">
+                                    <label>Base Units per Selling Unit *</label>
+                                    <input name="selling_units[{{ $fieldIndex }}][conversion_factor]" type="number" min="0.000001" max="100000000" step="any" value="{{ $unit['conversion_factor'] ?? '' }}" required>
+                                </div>
+                                <div class="field">
+                                    <label>Selling Price (₱) *</label>
+                                    <input name="selling_units[{{ $fieldIndex }}][selling_price]" type="number" min="0.01" max="9999999.99" step="0.01" value="{{ $unit['selling_price'] ?? '' }}" required>
+                                </div>
+                                <div class="field">
+                                    <label>Cost Price (₱) *</label>
+                                    <input name="selling_units[{{ $fieldIndex }}][cost_price]" type="number" min="0.01" max="9999999.99" step="0.01" value="{{ $unit['cost_price'] ?? '' }}" required>
+                                </div>
+                                <button type="button" class="button button-danger remove-selling-unit">Remove</button>
+                            </div>
+                        @endforeach
+                    </div>
+                    <button type="button" id="add-selling-unit" class="button button-secondary">+ Add Selling Unit</button>
+                </div>
+            </details>
+        </section>
 
-        <button type="submit" class="btn btn-success">Save Product</button>
-        <a href="{{ route('admin.products.index') }}"
-           class="btn btn-secondary">Cancel</a>
+        <details class="optional-settings" @if ($errors->any()) open @endif>
+            <summary>More settings (optional)</summary>
+            <div class="optional-settings-content">
+                <div class="fields">
+                    <div class="field">
+                        <label for="variant_size">Size / Pack Variant (optional)</label>
+                        <input id="variant_size" name="variant_size" maxlength="80" value="{{ old('variant_size') }}" placeholder="5 kg, Large">
+                    </div>
+                    <div class="field">
+                        <label for="variant_color">Color Variant (optional)</label>
+                        <input id="variant_color" name="variant_color" maxlength="80" value="{{ old('variant_color') }}" placeholder="Red, Blue">
+                    </div>
+                    <div class="field">
+                        <label for="profit_percentage">Profit Percentage (%)</label>
+                        <input id="profit_percentage" type="number" min="0" max="1000" step="0.01" name="profit_percentage" value="{{ old('profit_percentage', 15) }}">
+                        <small class="field-help">Defaults to 15% if left unchanged.</small>
+                    </div>
+                    <div class="field">
+                        <label for="low_stock_threshold">Low Stock Alert Threshold (<span id="threshold-unit">{{ $initialRiceProduct ? 'kg' : ($baseUnit ?: 'base unit') }}</span>) *</label>
+                        <input id="low_stock_threshold" type="number" min="0" max="1000000" step="0.01" name="low_stock_threshold" value="{{ old('low_stock_threshold', 20) }}" required>
+                    </div>
+                    <div class="field">
+                        <label for="description">Description</label>
+                        <textarea id="description" name="description">{{ old('description') }}</textarea>
+                    </div>
+                    <div class="field">
+                        <label for="qr_code">Product QR Code</label>
+                        <input id="qr_code" name="qr_code" maxlength="255" value="{{ old('qr_code') }}">
+                    </div>
+                    <div class="field">
+                        <label for="is_active">Store Status</label>
+                        <select id="is_active" name="is_active" required>
+                            <option value="1" @selected(old('is_active', '1') == '1')>Active</option>
+                            <option value="0" @selected(old('is_active', '1') == '0')>Inactive</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </details>
+
+        <div class="form-actions">
+            <button type="submit" class="button">Save Product</button>
+            <a href="{{ route('admin.products.index') }}" class="button button-secondary">Cancel</a>
+        </div>
     </form>
 </div>
 
+<template id="selling-unit-template">
+    <div class="selling-unit-row">
+        <div class="field">
+            <label>Selling Unit Name *</label>
+            <input data-field="unit_name" maxlength="30" pattern="[a-zA-Z0-9 _-]+" placeholder="dozen, box" required>
+        </div>
+        <div class="field">
+            <label>Base Units per Selling Unit *</label>
+            <input data-field="conversion_factor" type="number" min="0.000001" max="100000000" step="any" required>
+        </div>
+        <div class="field">
+            <label>Selling Price (₱) *</label>
+            <input data-field="selling_price" type="number" min="0.01" max="9999999.99" step="0.01" required>
+        </div>
+        <div class="field">
+            <label>Cost Price (₱) *</label>
+            <input data-field="cost_price" type="number" min="0.01" max="9999999.99" step="0.01" required>
+        </div>
+        <button type="button" class="button button-danger remove-selling-unit">Remove</button>
+    </div>
+</template>
+
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-    const type = document.getElementById('inventory_type');
-    const category = document.getElementById('category');
-    const riceType = document.getElementById('rice_type');
-    const detectedProductType = document.getElementById('detected-product-type');
+document.addEventListener('DOMContentLoaded', () => {
+    const typeInput = document.getElementById('inventory_type');
+    const categoryInput = document.getElementById('category');
+    const riceTypeInput = document.getElementById('rice_type');
+    const typeBadge = document.getElementById('detected-product-type');
     const riceFields = document.getElementById('rice-fields');
     const genericFields = document.getElementById('generic-fields');
+    const baseUnitInput = document.getElementById('base_unit');
+    const baseUnitName = document.getElementById('base-selling-unit-name');
     const thresholdUnit = document.getElementById('threshold-unit');
-    const costPerSack = document.getElementById('cost_per_sack');
+    const sellingUnits = document.getElementById('selling-units-container');
 
-    const baseUnit = document.getElementById('base_unit');
-    const initialStock = document.getElementById('initial_stock_quantity');
-    const sellingUnitsContainer = document.getElementById('selling-units-container');
-    const addSellingUnitButton = document.getElementById('add-selling-unit');
-
-    const riceInputs = riceFields.querySelectorAll('input');
-    const genericInputs = genericFields.querySelectorAll('input, select');
-
-    function updateProductType() {
-        const isRice = /\brice\b/i.test(category.value) || riceType.value.trim() !== '';
-        type.value = isRice ? 'rice' : 'generic';
-        detectedProductType.textContent = isRice ? 'Rice Product' : 'Generic Product';
-
+    const updateType = () => {
+        const isRice = /\brice\b/i.test(categoryInput.value)
+            || (riceTypeInput && riceTypeInput.value.trim() !== '');
+        typeInput.value = isRice ? 'rice' : 'generic';
+        typeBadge.textContent = isRice ? 'Rice Product' : 'Generic Product';
         riceFields.hidden = !isRice;
         genericFields.hidden = isRice;
 
-        riceInputs.forEach(input => {
+        riceFields.querySelectorAll('input, select, textarea').forEach((input) => {
             input.disabled = !isRice;
             input.required = isRice && [
                 'sack_weight_kg',
                 'price_per_kg',
                 'price_per_sack',
-                'cost_per_sack'
-            ].includes(input.id);
+                'cost_per_sack',
+            ].includes(input.name);
         });
 
-        genericInputs.forEach(input => {
+        genericFields.querySelectorAll('input, select, textarea').forEach((input) => {
             input.disabled = isRice;
         });
 
-        baseUnit.required = !isRice;
-        initialStock.required = !isRice;
-
-        sellingUnitsContainer
-            .querySelectorAll('input')
-            .forEach(input => {
-                input.disabled = isRice;
-                input.required = !isRice;
-            });
-
-        costPerSack.required = isRice;
+        if (baseUnitInput) {
+            baseUnitInput.required = !isRice;
+            document.getElementById('initial_stock_quantity').required = !isRice;
+            document.getElementById('base-selling-price').required = !isRice;
+            document.getElementById('base-cost-price').required = !isRice;
+            baseUnitName.value = baseUnitInput.value.trim().toLowerCase();
+            document.getElementById('base-unit-stock-label').textContent =
+                baseUnitInput.value.trim() || 'base unit';
+            document.getElementById('base-unit-price-label').textContent =
+                baseUnitInput.value.trim() || 'base unit';
+            document.getElementById('base-unit-cost-label').textContent =
+                baseUnitInput.value.trim() || 'base unit';
+        }
 
         thresholdUnit.textContent = isRice
             ? 'kg'
-            : (baseUnit.value.trim() || 'base unit');
-    }
+            : (baseUnitInput.value.trim() || 'base unit');
+    };
 
-    function reindexSellingUnits() {
-        const rows = sellingUnitsContainer.querySelectorAll('.selling-unit-row');
-
-        rows.forEach((row, index) => {
-            row.querySelectorAll('input').forEach(input => {
-                input.name = input.name.replace(
-                    /selling_units\[\d+\]/,
-                    `selling_units[${index}]`
-                );
+    const reindexSellingUnits = () => {
+        sellingUnits.querySelectorAll('.selling-unit-row').forEach((row, index) => {
+            const fieldIndex = index + 1;
+            row.querySelectorAll('[data-field], [name^="selling_units["]').forEach((input) => {
+                const field = input.dataset.field
+                    || input.name.match(/^selling_units\[\d+\]\[([^\]]+)\]$/)?.[1];
+                if (field) input.name = `selling_units[${fieldIndex}][${field}]`;
             });
-
-            const removeButton = row.querySelector('.remove-selling-unit');
-            removeButton.disabled = rows.length <= 1;
         });
-    }
+    };
 
-    addSellingUnitButton.addEventListener('click', function () {
-        const rows = sellingUnitsContainer.querySelectorAll('.selling-unit-row');
-
-        if (rows.length >= 20) {
-            alert('Maximum na ang 20 selling units.');
+    document.getElementById('add-selling-unit').addEventListener('click', () => {
+        if (sellingUnits.children.length >= 19) {
+            alert('A product can have up to 20 selling units.');
             return;
         }
 
-        const index = rows.length;
-        const row = document.createElement('div');
-
-        row.className = 'card mb-3 selling-unit-row';
-        row.innerHTML = `
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <strong>Selling Unit</strong>
-                    <button type="button" class="btn btn-outline-danger btn-sm remove-selling-unit">
-                        Remove
-                    </button>
-                </div>
-
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label class="form-label">Unit Name *</label>
-                        <input
-                            name="selling_units[${index}][unit_name]"
-                            class="form-control"
-                            maxlength="30"
-                            pattern="[a-zA-Z0-9 _-]+"
-                            placeholder="e.g. dozen, box"
-                            required
-                        >
-                    </div>
-
-                    <div class="col-md-6 mb-3">
-                        <label class="form-label">Conversion Factor *</label>
-                        <input
-                            name="selling_units[${index}][conversion_factor]"
-                            type="number"
-                            class="form-control"
-                            min="0.000001"
-                            max="100000000"
-                            step="any"
-                            required
-                        >
-                    </div>
-
-                    <div class="col-md-6 mb-3">
-                        <label class="form-label">Selling Price (₱) *</label>
-                        <input
-                            name="selling_units[${index}][selling_price]"
-                            type="number"
-                            class="form-control"
-                            min="0.01"
-                            max="9999999.99"
-                            step="0.01"
-                            required
-                        >
-                    </div>
-
-                    <div class="col-md-6 mb-3">
-                        <label class="form-label">Cost Price (₱) *</label>
-                        <input
-                            name="selling_units[${index}][cost_price]"
-                            type="number"
-                            class="form-control"
-                            min="0.01"
-                            max="9999999.99"
-                            step="0.01"
-                            required
-                        >
-                    </div>
-                </div>
-            </div>
-        `;
-
-        sellingUnitsContainer.appendChild(row);
-        updateProductType();
+        const row = document.getElementById('selling-unit-template')
+            .content.firstElementChild.cloneNode(true);
+        sellingUnits.appendChild(row);
         reindexSellingUnits();
     });
 
-    sellingUnitsContainer.addEventListener('click', function (event) {
+    sellingUnits.addEventListener('click', (event) => {
         const button = event.target.closest('.remove-selling-unit');
-
         if (!button) return;
-
-        const rows = sellingUnitsContainer.querySelectorAll('.selling-unit-row');
-
-        if (rows.length <= 1) {
-            alert('Kailangan ng kahit isang selling unit.');
-            return;
-        }
-
         button.closest('.selling-unit-row').remove();
         reindexSellingUnits();
     });
 
-    baseUnit.addEventListener('input', function () {
-        if (type.value === 'generic') {
-            thresholdUnit.textContent = this.value.trim() || 'base unit';
-        }
-    });
+    categoryInput.addEventListener('input', updateType);
+    if (riceTypeInput) riceTypeInput.addEventListener('input', updateType);
+    if (baseUnitInput) baseUnitInput.addEventListener('input', updateType);
 
-    category.addEventListener('input', updateProductType);
-    riceType.addEventListener('input', updateProductType);
-
-    updateProductType();
+    updateType();
     reindexSellingUnits();
 });
 </script>

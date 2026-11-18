@@ -2101,7 +2101,7 @@
                                         <form
                                             method="POST"
                                             action="{{ route('admin.products.destroy', $product) }}"
-                                            onsubmit="return confirm('Are you sure you want to remove this product? Products with sales history may be hidden instead of permanently deleted.');"
+                                            onsubmit="return confirm('Are you sure you want to permanently remove this product? Past order and inventory records will be kept, but its reviews, favorites, bundle links, and image will be deleted.');"
                                         >
                                             @csrf
                                             @method('DELETE')
@@ -2201,7 +2201,7 @@
                                             @if (($product->inventory_type ?? 'rice') === 'generic')
                                                 <div class="selling-units-editor">
                                                     <h4>Selling Units &amp; Prices</h4>
-                                                    <p class="muted">I-update ang conversion, presyo at cost ng bawat unit. Dapat manatiling aktibo ang base unit na may factor na 1.</p>
+                                                    <p class="muted">Update the conversion, price, and cost for each unit. The base unit must remain active with a conversion factor of 1.</p>
                                                     <div class="selling-unit-list" data-product-id="{{ $product->id }}">
                                                         @foreach ($product->sellingUnits as $unitIndex => $sellingUnit)
                                                             <div class="selling-unit-row" data-unit-row>
@@ -2484,8 +2484,8 @@
                                                 >
 
                                                 <small class="muted">
-                                                    Dapat natatangi ang identifier ng bawat produkto.
-                                                    Hindi ito delivery reference.
+                                                    Each product must have a unique identifier.
+                                                    This is not a delivery reference.
                                                 </small>
                                             </div>
 
@@ -2516,12 +2516,12 @@
                                                 </button>
 
                                                 <p class="muted">
-                                                    I-scan ang QR code para mahanap ang produktong ito sa Stock In.
+                                                    Scan the QR code to find this product in Stock In.
                                                 </p>
                                             </div>
                                         @else
                                             <p class="muted">
-                                                Wala pang QR identifier ang produktong ito.
+                                                This product does not have a QR identifier yet.
                                             </p>
                                         @endif
                                     </div>
@@ -2906,7 +2906,7 @@
         const container = document.getElementById('qr-image-' + productId);
 
         if (!container || !container.dataset.qrCode) {
-            alert('Walang QR identifier ang produktong ito.');
+            alert('This product does not have a QR identifier.');
             return;
         }
 
@@ -2916,7 +2916,7 @@
             (qrCanvas ? qrCanvas.toDataURL('image/png') : null);
 
         if (!imageUrl) {
-            alert('Hindi pa nalilikha ang QR image. Tingnan ang internet connection at subukan muli.');
+            alert('The QR image has not been generated. Check your internet connection and try again.');
             return;
         }
 
@@ -2924,7 +2924,7 @@
         const printWindow = window.open('', '_blank');
 
         if (!printWindow) {
-            alert('Payagan ang pop-ups upang ma-print ang QR code.');
+            alert('Allow pop-ups to print the QR code.');
             return;
         }
 
@@ -2965,5 +2965,57 @@
         });
     }
 </script>
+
+<section class="panel" style="margin-top:24px; overflow-x:auto;">
+    <div class="panel-heading">
+        <h2>Product Reviews</h2>
+        <span>{{ $reviews->total() }} reviews</span>
+    </div>
+    <table style="width:100%; border-collapse:collapse; text-align:left;">
+        <thead>
+            <tr>
+                <th style="padding:10px;">Product</th>
+                <th style="padding:10px;">Customer</th>
+                <th style="padding:10px;">Order</th>
+                <th style="padding:10px;">Rating</th>
+                <th style="padding:10px;">Review</th>
+                <th style="padding:10px;">Photo</th>
+                <th style="padding:10px;">Status</th>
+                <th style="padding:10px;">Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            @forelse ($reviews as $review)
+                <tr>
+                    <td style="padding:10px;">{{ $review->product?->name ?? 'Deleted product' }}</td>
+                    <td style="padding:10px;">{{ $review->user?->name ?? 'Deleted customer' }}</td>
+                    <td style="padding:10px;">{{ $review->order?->order_number ?? 'Deleted order' }}</td>
+                    <td style="padding:10px; white-space:nowrap;">{{ $review->rating }} / 5</td>
+                    <td style="padding:10px; max-width:360px; overflow-wrap:anywhere;">{{ $review->review ?: 'No written comment' }}</td>
+                    <td style="padding:10px;">
+                        @if ($review->photo_path)
+                            <a href="{{ asset('storage/' . $review->photo_path) }}" target="_blank" rel="noopener">View photo</a>
+                        @else
+                            No photo
+                        @endif
+                    </td>
+                    <td style="padding:10px;">{{ $review->is_approved ? 'Published' : 'Pending' }}</td>
+                    <td style="padding:10px;">
+                        @unless ($review->is_approved)
+                            <form method="POST" action="{{ route('admin.reviews.approve', $review) }}">
+                                @csrf
+                                @method('PATCH')
+                                <button class="button" type="submit">Approve</button>
+                            </form>
+                        @endunless
+                    </td>
+                </tr>
+            @empty
+                <tr><td colspan="8" style="padding:10px;">No reviews submitted yet.</td></tr>
+            @endforelse
+        </tbody>
+    </table>
+    {{ $reviews->links() }}
+</section>
 
 @endsection

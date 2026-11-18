@@ -94,7 +94,7 @@
                                             <strong>{{ $item->product_name }}</strong>
                                             <div class="muted">
                                                 {{ number_format((float) $item->quantity, 2) }}
-                                                {{ $item->unit_type === 'sack' ? 'sack(s)' : 'kg' }}
+                                                {{ $item->quantity_unit ?: $item->unit_type }}
                                             </div>
                                             <div class="muted">
                                                 ₱{{ number_format((float) $item->line_total, 2) }}

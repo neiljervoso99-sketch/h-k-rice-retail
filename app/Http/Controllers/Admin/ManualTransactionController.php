@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\CashRegisterShift;
 use App\Models\InventoryMovement;
 use App\Models\Order;
 use App\Models\OrderItem;
@@ -30,6 +31,7 @@ class ManualTransactionController extends Controller
         $orders = Order::with(['items', 'payments'])
             ->where('delivery_method', 'pickup')
             ->whereNotNull('inventory_deducted_at')
+            ->where('payment_method', '!=', 'utang')
             ->where('admin_notes', 'like', '%Manual transaction%')
             ->latest('completed_at')
             ->paginate(15);
@@ -37,8 +39,16 @@ class ManualTransactionController extends Controller
         return view('admin.manual-transactions.index', compact('orders'));
     }
 
-    public function create()
+    public function create(Request $request)
     {
+        $defaultPaymentMethod = $request->query('payment_method') === 'utang'
+            ? 'utang'
+            : 'cash';
+        $shift = CashRegisterShift::query()
+            ->where('opened_by', auth()->id())
+            ->where('status', 'open')
+            ->first();
+
         $products = Product::with('sellingUnits')
             ->where('is_active', true)
             ->orderBy('name')
@@ -62,10 +72,10 @@ class ManualTransactionController extends Controller
 
             foreach ($imageMap as $name => $filename) {
                 if (str_contains($productName, $name)) {
-                    $candidate = public_path('images/products/' . $filename);
+                    $candidate = public_path('images/products/'.$filename);
 
                     if (is_file($candidate)) {
-                        $mappedImage = asset('images/products/' . rawurlencode($filename));
+                        $mappedImage = asset('images/products/'.rawurlencode($filename));
                     }
 
                     break;
@@ -83,7 +93,7 @@ class ManualTransactionController extends Controller
                 'rice_type' => $product->rice_type,
                 'image_url' => $uploadedImage
                     && Storage::disk('public')->exists($uploadedImage)
-                        ? asset('storage/' . $uploadedImage)
+                        ? asset('storage/'.$uploadedImage)
                         : ($mappedImage ?: asset('images/default-product.svg')),
                 'inventory_type' => $generic ? 'generic' : 'rice',
                 'stock_unit' => $generic
@@ -121,16 +131,22 @@ class ManualTransactionController extends Controller
 
         return view(
             'admin.manual-transactions.create',
-            compact('products', 'productData')
+            compact('products', 'productData', 'shift', 'defaultPaymentMethod')
+            + ['drawerMode' => $request->boolean('drawer')]
         );
     }
 
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'customer_name' => ['nullable', 'string', 'max:255'],
+            'customer_name' => [
+                'required_if:payment_method,utang',
+                'nullable',
+                'string',
+                'max:255',
+            ],
             'customer_phone' => ['nullable', 'string', 'max:30'],
-            'payment_method' => ['required', 'in:cash,gcash'],
+            'payment_method' => ['required', 'in:cash,gcash,utang'],
             'gcash_reference_number' => [
                 'required_if:payment_method,gcash',
                 'nullable',
@@ -172,11 +188,24 @@ class ManualTransactionController extends Controller
         ]);
 
         $order = DB::transaction(function () use ($validated, $request) {
+            $isDebt = $validated['payment_method'] === 'utang';
+            $shift = $isDebt ? null : CashRegisterShift::query()
+                ->where('opened_by', $request->user()->id)
+                ->where('status', 'open')
+                ->lockForUpdate()
+                ->first();
+
+            if (! $isDebt && ! $shift) {
+                throw ValidationException::withMessages([
+                    'shift' => 'Open a cash drawer shift before recording a sale.',
+                ]);
+            }
+
             $walkIn = User::where('email', 'walkin@hk-store.local')
                 ->lockForUpdate()
                 ->first();
 
-            if (!$walkIn) {
+            if (! $walkIn) {
                 $walkIn = User::create([
                     'name' => 'Walk-in Customer',
                     'email' => 'walkin@hk-store.local',
@@ -202,10 +231,9 @@ class ManualTransactionController extends Controller
                     ->lockForUpdate()
                     ->firstOrFail();
 
-                if (!$product->is_active) {
+                if (! $product->is_active) {
                     throw ValidationException::withMessages([
-                        "items.$index.product_id" =>
-                            "The product {$product->name} is inactive.",
+                        "items.$index.product_id" => "The product {$product->name} is inactive.",
                     ]);
                 }
 
@@ -232,45 +260,40 @@ class ManualTransactionController extends Controller
                         ->where('is_active', true)
                         ->first();
 
-                    if (!$sellingUnit) {
+                    if (! $sellingUnit) {
                         throw ValidationException::withMessages([
-                            "items.$index.unit_type" =>
-                                "Please select a valid selling unit for {$product->name}.",
+                            "items.$index.unit_type" => "Please select a valid selling unit for {$product->name}.",
                         ]);
                     }
 
                     $factor = (float) $sellingUnit->conversion_factor;
                     $availableBaseStock = (float) $product->stock_base_quantity;
 
-                    if (!is_finite($factor) || $factor <= 0) {
+                    if (! is_finite($factor) || $factor <= 0) {
                         throw ValidationException::withMessages([
-                            "items.$index.unit_type" =>
-                                "The conversion factor for {$product->name} is invalid.",
+                            "items.$index.unit_type" => "The conversion factor for {$product->name} is invalid.",
                         ]);
                     }
 
-                    if (!is_finite($availableBaseStock) || $availableBaseStock < 0) {
+                    if (! is_finite($availableBaseStock) || $availableBaseStock < 0) {
                         throw ValidationException::withMessages([
-                            "items.$index.product_id" =>
-                                "The recorded base stock for {$product->name} is invalid.",
+                            "items.$index.product_id" => "The recorded base stock for {$product->name} is invalid.",
                         ]);
                     }
 
                     $baseQuantity = round($quantity * $factor, 3);
 
-                    if (!is_finite($baseQuantity) || $baseQuantity <= 0) {
+                    if (! is_finite($baseQuantity) || $baseQuantity <= 0) {
                         throw ValidationException::withMessages([
-                            "items.$index.quantity" =>
-                                "The converted quantity for {$product->name} is invalid.",
+                            "items.$index.quantity" => "The converted quantity for {$product->name} is invalid.",
                         ]);
                     }
 
                     if ($baseQuantity > $availableBaseStock) {
                         throw ValidationException::withMessages([
-                            "items.$index.quantity" =>
-                                "Insufficient stock for {$product->name}. "
-                                . "Available: {$availableBaseStock} "
-                                . ($product->base_unit ?: 'base units') . ".",
+                            "items.$index.quantity" => "Insufficient stock for {$product->name}. "
+                                ."Available: {$availableBaseStock} "
+                                .($product->base_unit ?: 'base units').'.',
                         ]);
                     }
 
@@ -280,9 +303,8 @@ class ManualTransactionController extends Controller
                         abs($submittedPrice - $registeredPrice) > 0.009
                     ) {
                         throw ValidationException::withMessages([
-                            "items.$index.unit_price" =>
-                                "The submitted price for {$product->name} "
-                                . "does not match its registered selling-unit price.",
+                            "items.$index.unit_price" => "The submitted price for {$product->name} "
+                                .'does not match its registered selling-unit price.',
                         ]);
                     }
 
@@ -293,10 +315,9 @@ class ManualTransactionController extends Controller
                         (string) ($product->base_unit ?: 'piece')
                     ));
                 } else {
-                    if (!in_array($unitType, ['kg', 'sack'], true)) {
+                    if (! in_array($unitType, ['kg', 'sack'], true)) {
                         throw ValidationException::withMessages([
-                            "items.$index.unit_type" =>
-                                'Rice can only be sold by kilogram or sack.',
+                            "items.$index.unit_type" => 'Rice can only be sold by kilogram or sack.',
                         ]);
                     }
 
@@ -304,8 +325,7 @@ class ManualTransactionController extends Controller
 
                     if ($unitType === 'sack' && $sackWeight < 5) {
                         throw ValidationException::withMessages([
-                            "items.$index.unit_type" =>
-                                "The sack weight for {$product->name} is invalid.",
+                            "items.$index.unit_type" => "The sack weight for {$product->name} is invalid.",
                         ]);
                     }
 
@@ -320,8 +340,7 @@ class ManualTransactionController extends Controller
 
                     if ($quantityKg > $availableStock) {
                         throw ValidationException::withMessages([
-                            "items.$index.quantity" =>
-                                "Insufficient stock for {$product->name}. Available: {$availableStock} kg.",
+                            "items.$index.quantity" => "Insufficient stock for {$product->name}. Available: {$availableStock} kg.",
                         ]);
                     }
 
@@ -344,7 +363,7 @@ class ManualTransactionController extends Controller
 
                 if (
                     $product->price_confirmed
-                    && !$generic
+                    && ! $generic
                 ) {
                     $registeredPrice = $unitType === 'sack'
                         ? $product->price_per_sack
@@ -355,8 +374,7 @@ class ManualTransactionController extends Controller
                         && abs($submittedPrice - (float) $registeredPrice) > 0.009
                     ) {
                         throw ValidationException::withMessages([
-                            "items.$index.unit_price" =>
-                                "The submitted price for {$product->name} does not match its registered price.",
+                            "items.$index.unit_price" => "The submitted price for {$product->name} does not match its registered price.",
                         ]);
                     }
                 }
@@ -382,7 +400,7 @@ class ManualTransactionController extends Controller
             if ($validated['payment_method'] === 'cash') {
                 $cashInput = $validated['cash_received'] ?? null;
 
-                if ($cashInput === null || !is_numeric($cashInput)) {
+                if ($cashInput === null || ! is_numeric($cashInput)) {
                     throw ValidationException::withMessages([
                         'cash_received' => 'Please enter the cash received.',
                     ]);
@@ -390,8 +408,7 @@ class ManualTransactionController extends Controller
 
                 if (round((float) $cashInput, 2) < $subtotal) {
                     throw ValidationException::withMessages([
-                        'cash_received' =>
-                            'Cash received must be at least the transaction total.',
+                        'cash_received' => 'Cash received must be at least the transaction total.',
                     ]);
                 }
             }
@@ -399,23 +416,24 @@ class ManualTransactionController extends Controller
             $now = now();
 
             do {
-                $orderNumber = 'HK-' . $now->format('Ymd') . '-'
-                    . Str::upper(Str::random(10));
+                $orderNumber = 'HK-'.$now->format('Ymd').'-'
+                    .Str::upper(Str::random(10));
             } while (Order::where('order_number', $orderNumber)->exists());
 
             $order = Order::create([
                 'order_number' => $orderNumber,
                 'user_id' => $walkIn->id,
+                'cash_register_shift_id' => $shift?->id,
                 'recipient_name' => $validated['customer_name']
                     ?? 'Walk-in Customer',
-                'phone' => !empty($validated['customer_phone'])
+                'phone' => ! empty($validated['customer_phone'])
                     ? $validated['customer_phone']
                     : 'N/A',
                 'address_line' => null,
                 'barangay' => null,
                 'delivery_method' => 'pickup',
                 'payment_method' => $validated['payment_method'],
-                'payment_status' => 'paid',
+                'payment_status' => $isDebt ? 'pending' : 'paid',
                 'status' => 'completed',
                 'subtotal' => $subtotal,
                 'delivery_fee' => 0,
@@ -428,7 +446,8 @@ class ManualTransactionController extends Controller
                     ? $now
                     : null,
                 'customer_notes' => $validated['notes'] ?? null,
-                'admin_notes' => 'Manual transaction recorded by admin.',
+                'admin_notes' => ($isDebt ? 'Utang' : 'Manual transaction')
+                    .' recorded by '.$request->user()->name.'.',
                 'accepted_at' => $now,
                 'completed_at' => $now,
                 'processing_at' => $now,
@@ -436,19 +455,20 @@ class ManualTransactionController extends Controller
                 'inventory_deducted_at' => $now,
             ]);
 
-            Payment::create([
-                'order_id' => $order->id,
-                'method' => $validated['payment_method'],
-                'amount' => $subtotal,
-                'status' => 'verified',
-                'reference_number' =>
-                    $validated['payment_method'] === 'gcash'
-                        ? trim($validated['gcash_reference_number'])
-                        : null,
-                'verified_by' => $request->user()->id,
-                'verified_at' => $now,
-                'notes' => 'Manual transaction recorded by admin.',
-            ]);
+            if (! $isDebt) {
+                Payment::create([
+                    'order_id' => $order->id,
+                    'method' => $validated['payment_method'],
+                    'amount' => $subtotal,
+                    'status' => 'verified',
+                    'reference_number' => $validated['payment_method'] === 'gcash'
+                            ? trim($validated['gcash_reference_number'])
+                            : null,
+                    'verified_by' => $request->user()->id,
+                    'verified_at' => $now,
+                    'notes' => 'Manual transaction recorded by admin.',
+                ]);
+            }
 
             foreach ($preparedItems as $item) {
                 $product = $item['product'];
@@ -510,12 +530,13 @@ class ManualTransactionController extends Controller
                     'quantity_kg' => $item['is_generic']
                         ? 0
                         : -($item['quantity_kg'] ?? 0),
-                    'sacks' => !$item['is_generic']
+                    'sacks' => ! $item['is_generic']
                         && $item['unit_type'] === 'sack'
                             ? $item['quantity']
                             : 0,
                     'movement_date' => $now->toDateString(),
-                    'notes' => 'Manual transaction ' . $orderNumber,
+                    'notes' => ($isDebt ? 'Utang ' : 'Manual transaction ')
+                        .$orderNumber,
                     'created_by' => $request->user()->id,
                 ]);
             }
@@ -534,16 +555,24 @@ class ManualTransactionController extends Controller
                 }
             });
 
+        if ($order->payment_method === 'utang') {
+            return redirect()
+                ->route('admin.debts.index', $request->boolean('drawer')
+                    ? ['saved' => 'product-debt']
+                    : [])
+                ->with('success', 'Utang '.$order->order_number.' recorded. Stock has been updated.');
+        }
+
         return redirect()
             ->route('admin.manual-transactions.receipt', $order)
-            ->with('success', 'Transaction ' . $order->order_number . ' saved. Stock has been updated.');
+            ->with('success', 'Transaction '.$order->order_number.' saved. Stock has been updated.');
     }
 
     public function receipt(Order $order)
     {
         if (
             $order->delivery_method !== 'pickup'
-            || !str_contains((string) $order->admin_notes, 'Manual transaction')
+            || ! str_contains((string) $order->admin_notes, 'Manual transaction')
         ) {
             abort(404);
         }

@@ -64,10 +64,16 @@
             </p>
         </div>
 
+        <div class="d-flex flex-wrap gap-2">
+        <a href="{{ route('admin.sales.index') }}"
+           style="display:inline-block;background:#fff;color:#198754;padding:10px 18px;border:1px solid #198754;border-radius:6px;text-decoration:none;font-weight:600;">
+            ← Sales (Benta)
+        </a>
         <a href="{{ route('admin.manual-transactions.create') }}"
            style="display:inline-block;background:#198754;color:#fff;padding:10px 18px;border:1px solid #198754;border-radius:6px;text-decoration:none;font-weight:600;">
             + New Transaction
         </a>
+        </div>
     </div>
 
     {{-- Notifications --}}

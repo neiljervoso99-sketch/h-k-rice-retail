@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use Closure;
+use App\Support\AdminModuleAccess;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -14,7 +15,10 @@ class EnsureUserIsAdmin
             return redirect()->route('login');
         }
 
-        if (!$request->user()->isAdmin()) {
+        if (! AdminModuleAccess::allows(
+            $request->user(),
+            $request->route()?->getName()
+        )) {
             abort(403, 'You are not authorized to access the owner panel.');
         }
 

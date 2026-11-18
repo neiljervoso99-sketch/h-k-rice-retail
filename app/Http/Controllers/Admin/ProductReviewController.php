@@ -5,18 +5,12 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\ProductReview;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\View\View;
 
 class ProductReviewController extends Controller
 {
-    public function index(): View
+    public function index(): RedirectResponse
     {
-        $reviews = ProductReview::query()
-            ->with(['product:id,name', 'user:id,name', 'order:id,order_number'])
-            ->latest()
-            ->paginate(20);
-
-        return view('admin.reviews.index', compact('reviews'));
+        return redirect()->route('admin.products.index');
     }
 
     public function approve(ProductReview $review): RedirectResponse
@@ -25,7 +19,7 @@ class ProductReviewController extends Controller
         $review->save();
 
         return redirect()
-            ->route('admin.reviews.index')
+            ->route('admin.products.index')
             ->with('success', 'Review approved and published.');
     }
 }

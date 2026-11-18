@@ -113,13 +113,13 @@ class CheckoutController extends Controller
     {
         $raw = $cartItem['quantity'] ?? null;
 
-        if (!is_numeric($raw)) {
+        if (! is_numeric($raw)) {
             return null;
         }
 
         $quantity = (float) $raw;
 
-        if (!is_finite($quantity) || $quantity <= 0 || $quantity > 1000) {
+        if (! is_finite($quantity) || $quantity <= 0 || $quantity > 1000) {
             return null;
         }
 
@@ -128,7 +128,7 @@ class CheckoutController extends Controller
 
     private function priceFor(Product $product, string $unit): ?float
     {
-        if (!(bool) $product->price_confirmed) {
+        if (! (bool) $product->price_confirmed) {
             return null;
         }
 
@@ -150,7 +150,7 @@ class CheckoutController extends Controller
 
         if (
             $price === null
-            || !is_numeric($price)
+            || ! is_numeric($price)
             || (float) $price <= 0
         ) {
             return null;
@@ -180,7 +180,7 @@ class CheckoutController extends Controller
                 ->where('is_active', true)
                 ->first();
 
-            if (!$sellingUnit) {
+            if (! $sellingUnit) {
                 throw ValidationException::withMessages([
                     'cart' => "The {$unit} option is unavailable for {$product->name}. Please update your cart.",
                 ]);
@@ -188,7 +188,7 @@ class CheckoutController extends Controller
 
             $factor = (float) $sellingUnit->conversion_factor;
 
-            if (!is_finite($factor) || $factor <= 0) {
+            if (! is_finite($factor) || $factor <= 0) {
                 throw ValidationException::withMessages([
                     'cart' => "The stock conversion for {$product->name} is invalid.",
                 ]);
@@ -197,7 +197,7 @@ class CheckoutController extends Controller
             $requestedBaseQuantity = round($quantity * $factor, 3);
 
             if (
-                !is_finite($requestedBaseQuantity)
+                ! is_finite($requestedBaseQuantity)
                 || $requestedBaseQuantity <= 0
             ) {
                 throw ValidationException::withMessages([
@@ -211,23 +211,23 @@ class CheckoutController extends Controller
             $inStock = is_finite($availableBaseQuantity)
                 && $availableBaseQuantity > 0
                 && $requestedBaseQuantity <= $availableBaseQuantity;
-            $minimumMet = true;
+            $minimumMet = $quantity >= 0.01;
         } else {
-            if (!in_array($unit, ['kg', 'sack'], true)) {
+            if (! in_array($unit, ['kg', 'sack'], true)) {
                 throw ValidationException::withMessages([
                     'cart' => "Invalid rice purchase unit for {$product->name}.",
                 ]);
             }
 
-            if ($unit === 'kg' && $quantity < 5) {
+            if ($unit === 'kg' && $quantity < 0.01) {
                 throw ValidationException::withMessages([
-                    'cart' => 'Minimum order is 5 kg per kilogram rice purchase.',
+                    'cart' => 'Minimum order is 0.01 kg per kilogram rice purchase.',
                 ]);
             }
 
-            if (floor($quantity) !== $quantity) {
+            if ($unit === 'sack' && floor($quantity) !== $quantity) {
                 throw ValidationException::withMessages([
-                    'cart' => 'Rice quantities must be whole numbers.',
+                    'cart' => 'Sack quantities must be whole numbers.',
                 ]);
             }
 
@@ -246,7 +246,9 @@ class CheckoutController extends Controller
             $inStock = (float) $product->stock_kg >= $quantityKg
                 && (float) $product->stock_kg > 0;
 
-            $minimumMet = $unit === 'sack' || $quantity >= 5;
+            $minimumMet = $unit === 'sack'
+                ? floor($quantity) === $quantity
+                : $quantity >= 0.01;
 
             $requestedBaseQuantity = null;
         }
@@ -291,7 +293,7 @@ class CheckoutController extends Controller
         }
 
         if (in_array($area, ['central_nearby', 'medium', 'far'], true)) {
-            if ($sackCount < 1 && !$hasGenericItems) {
+            if ($sackCount < 1 && ! $hasGenericItems) {
                 throw ValidationException::withMessages([
                     'cart' => 'Delivery to this area requires at least one sack of rice.',
                 ]);
@@ -328,8 +330,9 @@ class CheckoutController extends Controller
         foreach ($cart as $id => $cartItem) {
             $product = $products->get($id);
 
-            if (!$product || !$product->is_active) {
+            if (! $product || ! $product->is_active) {
                 $hasUnavailableStock = true;
+
                 continue;
             }
 
@@ -337,20 +340,21 @@ class CheckoutController extends Controller
                 $item = $this->prepareCartItem($product, $cartItem);
             } catch (ValidationException $e) {
                 $hasUnavailableStock = true;
+
                 continue;
             }
 
-            if (!$item['confirmed']) {
+            if (! $item['confirmed']) {
                 $needsPriceConfirmation = true;
             } else {
                 $subtotal += $item['subtotal'];
             }
 
-            if (!$item['minimum_met'] || !$item['in_stock']) {
+            if (! $item['minimum_met'] || ! $item['in_stock']) {
                 $hasUnavailableStock = true;
             }
 
-            if (!$item['is_generic'] && $item['unit'] === 'sack') {
+            if (! $item['is_generic'] && $item['unit'] === 'sack') {
                 $totalSacks += (int) $item['quantity'];
             }
 
@@ -359,8 +363,8 @@ class CheckoutController extends Controller
 
         $subtotal = round($subtotal, 2);
         $canProceed = count($items) > 0
-            && !$needsPriceConfirmation
-            && !$hasUnavailableStock;
+            && ! $needsPriceConfirmation
+            && ! $hasUnavailableStock;
 
         $barangayZones = self::BARANGAY_ZONES;
 
@@ -450,7 +454,7 @@ class CheckoutController extends Controller
             foreach ($cart as $id => $cartItem) {
                 $product = $products->get($id);
 
-                if (!$product || !$product->is_active) {
+                if (! $product || ! $product->is_active) {
                     throw ValidationException::withMessages([
                         'cart' => 'A product in your cart is unavailable. Please review your cart.',
                     ]);
@@ -458,19 +462,19 @@ class CheckoutController extends Controller
 
                 $item = $this->prepareCartItem($product, $cartItem);
 
-                if (!$item['confirmed']) {
+                if (! $item['confirmed']) {
                     throw ValidationException::withMessages([
                         'cart' => "The price for {$product->name} is not confirmed. Please review your cart.",
                     ]);
                 }
 
-                if (!$item['in_stock']) {
+                if (! $item['in_stock']) {
                     throw ValidationException::withMessages([
                         'cart' => "Insufficient stock for {$product->name}. Please update your cart.",
                     ]);
                 }
 
-                if (!$item['minimum_met']) {
+                if (! $item['minimum_met']) {
                     throw ValidationException::withMessages([
                         'cart' => "The minimum quantity for {$product->name} has not been met.",
                     ]);
@@ -505,8 +509,8 @@ class CheckoutController extends Controller
             $total = round($subtotal + $deliveryFee, 2);
 
             $order = Order::create([
-                'order_number' => 'HK-' . now()->format('Ymd') . '-'
-                    . Str::upper(Str::random(10)),
+                'order_number' => 'HK-'.now()->format('Ymd').'-'
+                    .Str::upper(Str::random(10)),
                 'user_id' => $request->user()->id,
                 'recipient_name' => $validated['recipient_name'],
                 'phone' => $validated['phone'],
@@ -543,7 +547,7 @@ class CheckoutController extends Controller
                     'unit_type' => $item['unit'],
                     'quantity_unit' => $item['unit'],
                     'quantity' => $item['quantity'],
-                    'sack_weight_kg' => !$generic && $item['unit'] === 'sack'
+                    'sack_weight_kg' => ! $generic && $item['unit'] === 'sack'
                         ? (int) $product->sack_weight_kg
                         : null,
                     'quantity_kg' => $generic
@@ -591,12 +595,12 @@ class CheckoutController extends Controller
 
         UserAlertNotifier::admins(
             'New customer order',
-            'Order ' . $order->order_number . ' has been placed.',
-            route('admin.orders.show', $order),
+            'Order '.$order->order_number.' has been placed.',
+            route('admin.orders.show', $order, false),
         );
 
         return redirect()->route('checkout.confirmation', [
             'order' => $order->id,
-        ]);
+        ])->with('order_just_submitted', true);
     }
 }

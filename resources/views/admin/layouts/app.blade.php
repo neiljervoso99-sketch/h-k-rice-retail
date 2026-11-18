@@ -9,31 +9,59 @@
     @vite('resources/js/app.js')
     <script>
         const adminThemeKey = 'admin-theme-{{ auth()->id() }}';
+        const adminAccentKey = 'admin-accent-{{ auth()->id() }}';
+        const adminAccentOptions = {
+            green: { primary: '#245333', dark: '#193d25', light: '#e8f1e5', darkLight: '#1a2439' },
+            blue: { primary: '#1d4ed8', dark: '#1e3a8a', light: '#eaf1ff', darkLight: '#17233c' },
+            teal: { primary: '#0f766e', dark: '#134e4a', light: '#e5f5f2', darkLight: '#123433' },
+            amber: { primary: '#b45309', dark: '#78350f', light: '#fff4d6', darkLight: '#392915' },
+            red: { primary: '#b42318', dark: '#7f1d1d', light: '#fff0ef', darkLight: '#3b2022' },
+            slate: { primary: '#475569', dark: '#1e293b', light: '#eef2f6', darkLight: '#222b3c' },
+        };
         const savedAdminTheme = localStorage.getItem(adminThemeKey);
-        document.documentElement.dataset.theme = savedAdminTheme === 'light'
-            ? 'light'
-            : 'dark';
+        const root = document.documentElement;
+        const defaultAdminTheme = @json(request()->routeIs('admin.dashboard') ? 'light' : 'dark');
+        root.dataset.theme = savedAdminTheme === 'light' || savedAdminTheme === 'dark'
+            ? savedAdminTheme
+            : defaultAdminTheme;
+        const savedAdminAccent = localStorage.getItem(adminAccentKey);
+
+        function applyAdminAccent(accentName) {
+            const selectedAccent = adminAccentOptions[accentName]
+                ? accentName
+                : 'blue';
+            const colors = adminAccentOptions[selectedAccent];
+
+            root.dataset.accent = selectedAccent;
+            root.style.setProperty('--green', colors.primary);
+            root.style.setProperty('--green-dark', colors.dark);
+            root.style.setProperty('--green-light', root.dataset.theme === 'dark'
+                ? colors.darkLight
+                : colors.light);
+        }
+
+        applyAdminAccent(savedAdminAccent);
     </script>
 
     <style>
         :root {
-            --green: #245333;
-            --green-dark: #193d25;
-            --green-light: #e8f1e5;
-            --page-bg: #f4f6f0;
-            --border: #dfe6dc;
-            --text: #263b2b;
-            --muted: #657267;
+            --green: #1d8acb;
+            --green-dark: #126da5;
+            --green-light: #e7f4fb;
+            --page-bg: #f1f7fb;
+            --border: #d7e6ef;
+            --text: #183247;
+            --muted: #5f7688;
             --danger: #a52b24;
         }
 
         :root[data-theme="dark"] {
             color-scheme: dark;
-            --page-bg: #0d1323;
-            --border: #293149;
-            --text: #ecf1ff;
-            --muted: #9aa5bd;
-            --green-light: #1a2439;
+            --page-bg: #07121e;
+            --border: rgba(148, 193, 221, .17);
+            --text: #eaf4fb;
+            --muted: #a8bbce;
+            --green-light: #142a3b;
             --danger: #fca5a5;
         }
 
@@ -44,9 +72,20 @@
         body {
             margin: 0;
             font-family: Arial, Helvetica, sans-serif;
-            background: var(--page-bg);
+            background:
+                radial-gradient(ellipse at 14% 10%, rgba(56, 189, 248, .18), transparent 34%),
+                radial-gradient(ellipse at 88% 4%, rgba(37, 99, 235, .12), transparent 32%),
+                linear-gradient(145deg, #f8fcff, #eaf4fb 52%, #f5faff);
             color: var(--text);
             font-size: 14px;
+            background-attachment: fixed;
+        }
+
+        :root[data-theme="dark"] body {
+            background:
+                radial-gradient(ellipse at 14% 10%, rgba(14, 165, 233, .2), transparent 34%),
+                radial-gradient(ellipse at 88% 4%, rgba(37, 99, 235, .16), transparent 32%),
+                linear-gradient(145deg, #091827, #07121e 55%, #0c1e30);
         }
 
         button, input, select, textarea {
@@ -66,8 +105,12 @@
             align-items: center;
             justify-content: space-between;
             gap: 16px;
-            background: var(--green);
+            background: linear-gradient(110deg, #0b2740, #12466d);
             color: white;
+            border-bottom: 1px solid rgba(125, 211, 252, .2);
+            box-shadow: 0 10px 28px rgba(2, 8, 23, .18);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
         }
 
         .header-brand {
@@ -116,7 +159,35 @@
             flex-shrink: 0;
         }
 
-        .theme-toggle {
+        .sidebar-toggle {
+            display: inline-grid;
+            width: 40px;
+            height: 40px;
+            flex: 0 0 40px;
+            place-items: center;
+            border: 1px solid rgba(255, 255, 255, .35);
+            border-radius: 12px;
+            background: rgba(255, 255, 255, .1);
+            color: #fff;
+            cursor: pointer;
+            font-size: 19px;
+            transition: background .18s ease, transform .18s ease;
+        }
+
+        .sidebar-toggle:hover,
+        .sidebar-toggle:focus-visible {
+            background: rgba(255, 255, 255, .2);
+            transform: translateY(-1px);
+        }
+
+        .theme-toggle-icon {
+            font-size: 16px;
+            line-height: 1;
+        }
+
+        .accent-picker { position: relative; }
+
+        .accent-picker-trigger {
             display: inline-flex;
             align-items: center;
             justify-content: center;
@@ -133,14 +204,66 @@
             white-space: nowrap;
         }
 
-        .theme-toggle:hover,
-        .theme-toggle:focus-visible {
-            background: rgba(255, 255, 255, .20);
+        .accent-picker-trigger:hover,
+        .accent-picker-trigger:focus-visible { background: rgba(255, 255, 255, .20); }
+
+        .accent-preview {
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, .85);
+            border-radius: 50%;
+            background: var(--green);
         }
 
-        .theme-toggle-icon {
-            font-size: 16px;
-            line-height: 1;
+        .accent-picker-popover {
+            position: absolute;
+            top: calc(100% + 10px);
+            right: 0;
+            z-index: 60;
+            width: 226px;
+            padding: 14px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--page-bg);
+            color: var(--text);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, .2);
+        }
+
+        .accent-picker-popover[hidden] { display: none; }
+        .accent-picker-title { margin: 0 0 12px; font-size: 13px; font-weight: 700; }
+        .theme-mode-options { display: grid; grid-template-columns: repeat(2, 1fr); gap: 7px; margin-bottom: 14px; }
+        .theme-mode-option {
+            min-height: 36px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--page-bg);
+            color: var(--text);
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .theme-mode-option[aria-pressed="true"] { border-color: var(--green); background: var(--green); color: #fff; }
+        .accent-swatches { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; }
+
+        .accent-swatch {
+            display: grid;
+            width: 48px;
+            height: 42px;
+            place-items: center;
+            border: 1px solid var(--border);
+            border-radius: 7px;
+            background: var(--page-bg);
+            cursor: pointer;
+        }
+
+        .accent-swatch:hover,
+        .accent-swatch[aria-pressed="true"] { outline: 2px solid var(--green); outline-offset: 2px; }
+
+        .accent-swatch-color {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: var(--swatch-color);
         }
 
         .profile-trigger {
@@ -226,10 +349,40 @@
         }
 
         .profile-dropdown-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
             padding: 12px;
             border-bottom: 1px solid var(--border);
             margin-bottom: 6px;
             overflow-wrap: anywhere;
+        }
+
+        .profile-dropdown-avatar {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 52px;
+            height: 52px;
+            flex: 0 0 52px;
+            overflow: hidden;
+            border: 2px solid var(--green);
+            border-radius: 50%;
+            background: var(--green-light);
+            color: var(--green);
+            font-size: 17px;
+            font-weight: 700;
+            text-decoration: none;
+        }
+
+        .profile-dropdown-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .profile-dropdown-identity {
+            min-width: 0;
         }
 
         .profile-dropdown-header strong {
@@ -238,9 +391,11 @@
             font-size: 14px;
         }
 
-        .profile-dropdown-header span {
+        .profile-dropdown-identity span {
+            display: block;
             color: var(--muted);
             font-size: 12px;
+            overflow-wrap: anywhere;
         }
 
         .profile-menu-link,
@@ -288,12 +443,53 @@
             width: 250px;
             overflow-y: auto;
             padding: 22px 14px;
-            background: #fff;
+            background: rgba(255, 255, 255, .86);
             border-right: 1px solid var(--border);
+            box-shadow: 8px 0 28px rgba(20, 52, 74, .06);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            transition: width .2s ease, transform .2s ease;
+        }
+
+        body.sidebar-collapsed .sidebar {
+            width: 76px;
+            padding-right: 8px;
+            padding-left: 8px;
+        }
+
+        body.sidebar-collapsed .sidebar-brand {
+            justify-content: center;
+            padding-right: 0;
+            padding-left: 0;
+        }
+
+        body.sidebar-collapsed .sidebar-brand-text,
+        body.sidebar-collapsed .menu-heading {
+            display: none;
+        }
+
+        body.sidebar-collapsed .menu-label {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+
+        body.sidebar-collapsed .sidebar-nav a,
+        body.sidebar-collapsed .sidebar-logout {
+            justify-content: center;
+            padding-right: 5px;
+            padding-left: 5px;
         }
 
         :root[data-theme="dark"] .sidebar {
-            background: #11192a;
+            background: rgba(8, 21, 34, .94);
+            border-right-color: rgba(125, 211, 252, .15);
         }
 
         :root[data-theme="dark"] .sidebar-brand h2,
@@ -392,21 +588,24 @@
             align-items: center;
             gap: 11px;
             padding: 12px;
-            border-radius: 7px;
+            border-radius: 10px;
             color: var(--text);
             text-decoration: none;
             font-size: 14px;
             font-weight: 600;
-            transition: background .15s ease;
+            transition: background .18s ease, color .18s ease, transform .18s ease, box-shadow .18s ease;
         }
 
         .sidebar-nav a:hover {
-            background: var(--green-light);
+            background: rgba(56, 189, 248, .12);
+            color: #0284c7;
+            transform: translateX(2px);
         }
 
         .sidebar-nav a.active {
-            background: var(--green);
+            background: linear-gradient(115deg, #1188c7, #276ec0);
             color: white;
+            box-shadow: 0 6px 16px rgba(14, 116, 178, .24);
         }
 
         .menu-icon {
@@ -447,6 +646,16 @@
             margin-left: 250px;
             padding: 102px 26px 32px;
             min-height: 100vh;
+        }
+
+        body.sidebar-collapsed .admin-header {
+            left: 76px;
+            transition: left .2s ease;
+        }
+
+        body.sidebar-collapsed .admin-main {
+            margin-left: 76px;
+            transition: margin-left .2s ease;
         }
 
         .page-heading {
@@ -783,14 +992,17 @@
                 gap: 5px;
             }
 
-            .theme-toggle {
+            .accent-picker-trigger {
                 width: 38px;
                 min-width: 38px;
                 min-height: 38px;
                 padding: 6px;
             }
 
-            .theme-toggle-label {
+            .accent-picker-label { display: none; }
+
+            .theme-toggle-label,
+            .accent-picker-label {
                 display: none;
             }
 
@@ -1058,10 +1270,32 @@
                 max-width: 100%;
                 overscroll-behavior-x: contain;
             }
+
+            body.sidebar-collapsed .sidebar {
+                width: 100%;
+                transform: translateY(calc(100% + env(safe-area-inset-bottom)));
+            }
+
+            body.sidebar-collapsed .admin-header {
+                left: 0;
+            }
+
+            body.sidebar-collapsed .admin-main {
+                margin-left: 0;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .sidebar,
+            .admin-header,
+            .admin-main,
+            .sidebar-toggle {
+                transition: none;
+            }
         }
     </style>
 </head>
-<body>
+<body class="{{ request()->routeIs('admin.dashboard') ? 'admin-dashboard-page' : '' }}">
     @php
         $adminUser = auth()->user();
         $adminName = $adminUser?->name ?? 'Administrator';
@@ -1077,13 +1311,12 @@
 
         $adminInitials = $adminInitials ?: 'A';
 
-        // Optional: use a public profile image if your User model has a profile_picture field.
         $profilePicture = $adminUser && !empty($adminUser->profile_picture)
-            ? asset('storage/' . ltrim($adminUser->profile_picture, '/'))
+            ? url('/storage/' . ltrim($adminUser->profile_picture, '/'))
             : null;
     @endphp
 
-    <aside class="sidebar">
+    <aside class="sidebar" id="adminSidebar">
         <div class="sidebar-brand">
             <img
                 class="sidebar-logo"
@@ -1106,23 +1339,35 @@
                 <span class="menu-label">Dashboard</span>
             </a>
 
+                @if ($isAdministrator || $adminUser->hasStaffPermission('sales'))
+                <a href="{{ route('admin.sales.index') }}"
+               class="{{ request()->routeIs('admin.sales.*') ? 'active' : '' }}">
+                <span class="sidebar-icon">🧾</span>
+                <span class="menu-label">Sales (Benta)</span>
+            </a>
+                @endif
+
+                @if ($isAdministrator || $adminUser->hasStaffPermission('manual_transactions'))
             <a href="{{ route('admin.manual-transactions.index') }}"
                class="{{ request()->routeIs('admin.manual-transactions.*') ? 'active' : '' }}">
-                <span class="sidebar-icon">🧾</span>
+                <span class="menu-icon">▤</span>
                 <span class="menu-label">Manual Transactions</span>
             </a>
+                @endif
 
-            @if ($isAdministrator)
+                @if ($isAdministrator || $adminUser->hasStaffPermission('debts'))
+                <a href="{{ route('admin.debts.index') }}"
+                    class="{{ request()->routeIs('admin.debts.*') ? 'active' : '' }}">
+                <span class="menu-icon">₱</span>
+                <span class="menu-label">Utang</span>
+            </a>
+                @endif
+
+                @if ($isAdministrator || $adminUser->hasStaffPermission('products'))
             <a href="{{ route('admin.products.index') }}"
                class="{{ request()->routeIs('admin.products.*') ? 'active' : '' }}">
                 <span class="menu-icon">▦</span>
                 <span class="menu-label">Products</span>
-            </a>
-
-            <a href="{{ route('admin.reviews.index') }}"
-               class="{{ request()->routeIs('admin.reviews.*') ? 'active' : '' }}">
-                <span class="menu-icon">&#9733;</span>
-                <span class="menu-label">Product Reviews</span>
             </a>
 
             <a href="{{ route('admin.bundles.index') }}"
@@ -1130,36 +1375,65 @@
                 <span class="menu-icon">▣</span>
                 <span class="menu-label">Bundle Packs</span>
             </a>
+            @endif
 
+            @if ($isAdministrator || $adminUser->hasStaffPermission('inventory'))
             <a href="{{ route('admin.inventory.index') }}"
                class="{{ request()->routeIs('admin.inventory.*') ? 'active' : '' }}">
                 <span class="menu-icon">▤</span>
                 <span class="menu-label">Inventory</span>
             </a>
+            @endif
+
+            @if ($isAdministrator || $adminUser->hasStaffPermission('purchase_orders'))
+            <a href="{{ route('admin.purchase-orders.index') }}"
+               class="{{ request()->routeIs('admin.purchase-orders.*') ? 'active' : '' }}">
+                <span class="menu-icon">▧</span>
+                <span class="menu-label">Purchase Orders</span>
+            </a>
+            @endif
+
+            @if ($isAdministrator || $adminUser->hasStaffPermission('suppliers'))
+            <a href="{{ route('admin.suppliers.index') }}"
+               class="{{ request()->routeIs('admin.suppliers.*') ? 'active' : '' }}">
+                <span class="menu-icon">♧</span>
+                <span class="menu-label">Suppliers</span>
+            </a>
+            @endif
+
+            @if ($isAdministrator || $adminUser->hasStaffPermission('customer_orders'))
 <a href="{{ route('admin.orders.index') }}"
    class="{{ request()->routeIs('admin.orders.*') ? 'active' : '' }}">
     <span class="menu-icon">☷</span>
     <span class="menu-label">Customer Orders</span>
 </a>
+            @endif
 
+            @if ($isAdministrator || $adminUser->hasStaffPermission('profit_pricing'))
             <a href="{{ route('admin.profit-pricing.index') }}"
                class="{{ request()->routeIs('admin.profit-pricing.*') ? 'active' : '' }}">
                 <span class="menu-icon">₱</span>
                 <span class="menu-label">Profit &amp; Pricing</span>
             </a>
+            @endif
 
+            @if ($isAdministrator || $adminUser->hasStaffPermission('expenses'))
             <a href="{{ route('admin.expenses.index') }}"
                class="{{ request()->routeIs('admin.expenses.*') ? 'active' : '' }}">
                 <span class="menu-icon">▧</span>
                 <span class="menu-label">Expenses</span>
             </a>
+            @endif
 
+            @if ($isAdministrator || $adminUser->hasStaffPermission('reports'))
             <a href="{{ route('admin.reports.index') }}"
                class="{{ request()->routeIs('admin.reports.*') ? 'active' : '' }}">
                 <span class="menu-icon">▥</span>
                 <span class="menu-label">Reports</span>
             </a>
+            @endif
 
+            @if ($isAdministrator)
             <a href="{{ route('admin.users.index') }}"
                class="{{ request()->routeIs('admin.users.*') ? 'active' : '' }}">
                 <span class="menu-icon">♙</span>
@@ -1180,6 +1454,14 @@
     </aside>
 
     <header class="admin-header">
+        <button
+            class="sidebar-toggle"
+            id="sidebarToggle"
+            type="button"
+            aria-label="Toggle navigation"
+            aria-expanded="true"
+            aria-controls="adminSidebar"
+        ><span aria-hidden="true">☰</span></button>
         <div class="header-brand">
             <img
                 class="header-logo"
@@ -1194,16 +1476,37 @@
         </div>
 
         <div class="header-actions">
-            <button
-                class="theme-toggle"
-                id="themeToggle"
-                type="button"
-                aria-label="Switch to light mode"
-                aria-pressed="true"
-            >
-                <span class="theme-toggle-icon" aria-hidden="true">☀</span>
-                <span class="theme-toggle-label">Light mode</span>
-            </button>
+            <div class="accent-picker">
+                <button
+                    class="accent-picker-trigger"
+                    id="accentPickerToggle"
+                    type="button"
+                    aria-label="Open dashboard theme settings"
+                    aria-expanded="false"
+                    aria-controls="accentPickerPanel"
+                >
+                    <span class="accent-preview" aria-hidden="true"></span>
+                    <span class="accent-picker-label">Theme</span>
+                    <span class="theme-toggle-icon" id="themeModeIcon" aria-hidden="true">☾</span>
+                    <span class="theme-toggle-label" id="themeModeLabel">Dark mode</span>
+                </button>
+                <div class="accent-picker-popover" id="accentPickerPanel" role="group" aria-label="Dashboard theme settings" hidden>
+                    <p class="accent-picker-title">Appearance</p>
+                    <div class="theme-mode-options" role="group" aria-label="Color mode">
+                        <button class="theme-mode-option" type="button" data-theme-choice="light" aria-pressed="false">☀ Light</button>
+                        <button class="theme-mode-option" type="button" data-theme-choice="dark" aria-pressed="true">☾ Dark mode</button>
+                    </div>
+                    <p class="accent-picker-title">Color</p>
+                    <div class="accent-swatches">
+                        <button class="accent-swatch" type="button" data-accent="green" aria-label="Green accent" aria-pressed="false" title="Green"><span class="accent-swatch-color" style="--swatch-color:#245333"></span></button>
+                        <button class="accent-swatch" type="button" data-accent="blue" aria-label="Blue accent" aria-pressed="false" title="Blue"><span class="accent-swatch-color" style="--swatch-color:#1d4ed8"></span></button>
+                        <button class="accent-swatch" type="button" data-accent="teal" aria-label="Teal accent" aria-pressed="false" title="Teal"><span class="accent-swatch-color" style="--swatch-color:#0f766e"></span></button>
+                        <button class="accent-swatch" type="button" data-accent="amber" aria-label="Amber accent" aria-pressed="false" title="Amber"><span class="accent-swatch-color" style="--swatch-color:#b45309"></span></button>
+                        <button class="accent-swatch" type="button" data-accent="red" aria-label="Red accent" aria-pressed="false" title="Red"><span class="accent-swatch-color" style="--swatch-color:#b42318"></span></button>
+                        <button class="accent-swatch" type="button" data-accent="slate" aria-label="Slate accent" aria-pressed="false" title="Slate"><span class="accent-swatch-color" style="--swatch-color:#475569"></span></button>
+                    </div>
+                </div>
+            </div>
 
             @include('components.notification-center')
 
@@ -1217,7 +1520,7 @@
                 aria-expanded="false"
                 aria-controls="profileDropdown"
             >
-                <span class="profile-avatar">
+                <span class="profile-avatar" data-initials="{{ $adminInitials }}">
                     @if ($profilePicture)
                         <img src="{{ $profilePicture }}" alt="Admin profile picture">
                     @else
@@ -1235,10 +1538,18 @@
 
             <div class="profile-dropdown" id="profileDropdown" hidden>
                 <div class="profile-dropdown-header">
+                    <a class="profile-dropdown-avatar" data-initials="{{ $adminInitials }}" href="{{ route('admin.profile.edit') }}" aria-label="View profile picture and manage profile">
+                        @if ($profilePicture)
+                            <img src="{{ $profilePicture }}" alt="{{ $adminName }} profile picture">
+                        @else
+                            {{ $adminInitials }}
+                        @endif
+                    </a>
+                    <div class="profile-dropdown-identity">
                     <strong>{{ $adminRoleLabel }} Account</strong>
                     <span>{{ $adminName }}</span>
-                    <br>
                     <span>{{ $adminEmail }}</span>
+                    </div>
                 </div>
 
                 <a class="profile-menu-link" href="{{ route('admin.profile.edit') }}">
@@ -1483,46 +1794,594 @@
             background-color: #172a22 !important;
             color: #c9ead0;
         }
+
+        .admin-main .button:not(.button-secondary):not([class*="danger"]):not([class*="remove"]),
+        .admin-main .btn:not(.btn-secondary):not([class*="outline"]):not([class*="danger"]):not([class*="remove"]),
+        .admin-main button:not([class*="danger"]):not([class*="remove"]):not(.button-secondary):not(.btn-secondary):not([class*="outline"]):not(.btn-close):not(.quantity-button):not(.product-picker-close):not(.assistant-close),
+        .admin-main .dashboard-action-button,
+        .admin-main [role="tab"][aria-selected="true"],
+        .admin-main .tab-button.active,
+        .admin-main .pagination .page-item.active .page-link {
+            border-color: var(--green) !important;
+            background-color: var(--green) !important;
+            color: #fff !important;
+        }
+
+        .admin-main .button:not(.button-secondary):not([class*="danger"]):not([class*="remove"]):hover,
+        .admin-main .btn:not(.btn-secondary):not([class*="outline"]):not([class*="danger"]):not([class*="remove"]):hover,
+        .admin-main button:not([class*="danger"]):not([class*="remove"]):not(.button-secondary):not(.btn-secondary):not([class*="outline"]):not(.btn-close):not(.quantity-button):not(.product-picker-close):not(.assistant-close):hover,
+        .admin-main .dashboard-action-button:hover,
+        .admin-main .tab-button.active:hover {
+            border-color: var(--green-dark) !important;
+            background-color: var(--green-dark) !important;
+        }
+
+        .admin-main {
+            background:
+                radial-gradient(ellipse at 86% 0%, rgba(56, 189, 248, .12), transparent 38%),
+                linear-gradient(145deg, rgba(255, 255, 255, .34), rgba(226, 243, 252, .2));
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+        }
+
+        .admin-main .page-heading {
+            padding: 18px 20px;
+            border: 1px solid rgba(125, 174, 202, .22);
+            border-radius: 16px;
+            background: linear-gradient(120deg, rgba(255, 255, 255, .6), rgba(226, 243, 252, .38));
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, .68), 0 10px 24px rgba(22, 58, 82, .06);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+        }
+
+        .admin-main .page-heading h1 {
+            color: var(--text);
+            font-size: clamp(24px, 3vw, 32px);
+            letter-spacing: -.035em;
+        }
+
+        .admin-main .panel,
+        .admin-main .summary-card,
+        .admin-main .card,
+        .admin-main .report-panel,
+        .admin-main .pos-product-panel {
+            border: 1px solid rgba(125, 174, 202, .24);
+            border-radius: 16px;
+            background: rgba(255, 255, 255, .76);
+            box-shadow: 0 10px 28px rgba(22, 58, 82, .07), inset 0 1px 0 rgba(255, 255, 255, .75);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+        }
+
+        .admin-main .panel:hover,
+        .admin-main .summary-card:hover,
+        .admin-main .card:hover,
+        .admin-main .report-panel:hover {
+            border-color: rgba(56, 189, 248, .38);
+            box-shadow: 0 14px 32px rgba(22, 58, 82, .11), inset 0 1px 0 rgba(255, 255, 255, .8);
+            transform: translateY(-2px);
+        }
+
+        .admin-main .panel h2,
+        .admin-main .panel h3,
+        .admin-main .card h2,
+        .admin-main .card h3 {
+            color: var(--text);
+        }
+
+        .admin-main .table-wrap {
+            border: 1px solid rgba(125, 174, 202, .18);
+            border-radius: 12px;
+            background: rgba(255, 255, 255, .35);
+        }
+
+        .admin-main .table-wrap th,
+        .admin-main th {
+            background: rgba(224, 240, 249, .78);
+            color: #35566d;
+        }
+
+        .admin-main .table-wrap td {
+            border-color: rgba(125, 174, 202, .16);
+        }
+
+        .admin-main .table-wrap tbody tr {
+            transition: background-color .16s ease;
+        }
+
+        .admin-main .table-wrap tbody tr:hover {
+            background: rgba(56, 189, 248, .07);
+        }
+
+        .admin-main input:not([type="checkbox"]):not([type="radio"]),
+        .admin-main select,
+        .admin-main textarea,
+        .admin-main .form-control,
+        .admin-main .form-select {
+            border-color: rgba(93, 143, 171, .32);
+            border-radius: 8px;
+            background-color: rgba(255, 255, 255, .82);
+            color: #183247;
+            transition: border-color .16s ease, box-shadow .16s ease;
+        }
+
+        .admin-main input:focus,
+        .admin-main select:focus,
+        .admin-main textarea:focus,
+        .admin-main .form-control:focus,
+        .admin-main .form-select:focus {
+            border-color: #38bdf8;
+            box-shadow: 0 0 0 3px rgba(56, 189, 248, .16);
+            outline: 0;
+        }
+
+        .admin-main :is(button, .button, .btn, a.button, a.btn, .dashboard-action-button) {
+            transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease, background-color .18s ease, color .18s ease;
+        }
+
+        .admin-main :is(button, .button, .btn, a.button, a.btn, .dashboard-action-button):focus-visible {
+            outline: 3px solid rgba(56, 189, 248, .48);
+            outline-offset: 2px;
+        }
+
+        .admin-main .page-heading + .panel {
+            margin-top: 16px;
+        }
+
+        :root[data-theme="dark"] .admin-main {
+            background:
+                radial-gradient(ellipse at 86% 0%, rgba(14, 165, 233, .14), transparent 38%),
+                linear-gradient(145deg, rgba(17, 38, 57, .34), rgba(7, 18, 30, .22));
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+        }
+
+        :root[data-theme="dark"] .admin-main .page-heading {
+            border-color: rgba(125, 211, 252, .17);
+            background: linear-gradient(120deg, rgba(20, 43, 62, .75), rgba(10, 25, 40, .52));
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, .055), 0 12px 30px rgba(1, 7, 14, .16);
+        }
+
+        :root[data-theme="dark"] .admin-main .panel,
+        :root[data-theme="dark"] .admin-main .summary-card,
+        :root[data-theme="dark"] .admin-main .card,
+        :root[data-theme="dark"] .admin-main .report-panel,
+        :root[data-theme="dark"] .admin-main .pos-product-panel {
+            border-color: rgba(125, 211, 252, .16) !important;
+            background: linear-gradient(145deg, rgba(17, 38, 57, .88), rgba(11, 26, 42, .84)) !important;
+            box-shadow: 0 12px 30px rgba(1, 7, 14, .2), inset 0 1px 0 rgba(255, 255, 255, .045);
+            color: #eaf4fb;
+        }
+
+        :root[data-theme="dark"] .admin-main .table-wrap,
+        :root[data-theme="dark"] .admin-main .table,
+        :root[data-theme="dark"] .admin-main table {
+            border-color: rgba(125, 211, 252, .14);
+            background: rgba(8, 22, 36, .34);
+            --bs-table-bg: transparent;
+            --bs-table-color: #d6e5ef;
+            --bs-table-border-color: rgba(125, 211, 252, .14);
+            color: #d6e5ef;
+        }
+
+        :root[data-theme="dark"] .admin-main .table-wrap th,
+        :root[data-theme="dark"] .admin-main th {
+            background: rgba(39, 72, 96, .55) !important;
+            color: #cde7f5 !important;
+        }
+
+        :root[data-theme="dark"] .admin-main .table-wrap td,
+        :root[data-theme="dark"] .admin-main td {
+            border-color: rgba(125, 211, 252, .12);
+            color: #d6e5ef !important;
+        }
+
+        :root[data-theme="dark"] .admin-main .table-wrap tbody tr:hover,
+        :root[data-theme="dark"] .admin-main tbody tr:hover > td {
+            background: rgba(56, 189, 248, .08) !important;
+        }
+
+        :root[data-theme="dark"] .admin-main input:not([type="checkbox"]):not([type="radio"]),
+        :root[data-theme="dark"] .admin-main select,
+        :root[data-theme="dark"] .admin-main textarea,
+        :root[data-theme="dark"] .admin-main .form-control,
+        :root[data-theme="dark"] .admin-main .form-select {
+            border-color: rgba(125, 211, 252, .2);
+            background-color: rgba(8, 22, 36, .88);
+            color: #eaf4fb;
+        }
+
+        :root[data-theme="dark"] .admin-main input::placeholder,
+        :root[data-theme="dark"] .admin-main textarea::placeholder {
+            color: #9ab2c3;
+        }
+
+        :root[data-theme="dark"] .admin-main .table-wrap a,
+        :root[data-theme="dark"] .admin-main a:not(.button):not(.btn):not(.dashboard-action-button):not(.page-link) {
+            color: #7dd3fc;
+        }
+
+        :root[data-theme="light"] .admin-header {
+            background: linear-gradient(110deg, #0b2740, #12466d);
+        }
+
+        :root[data-theme="light"] .sidebar {
+            background: rgba(247, 252, 255, .9);
+        }
+
+        :root[data-theme="light"] .sidebar-nav a.active {
+            color: #fff;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .admin-main .panel,
+            .admin-main .summary-card,
+            .admin-main .card,
+            .admin-main .report-panel,
+            .sidebar-nav a {
+                transition: none;
+            }
+        }
+
+        .admin-main :is(
+            .panel,
+            .card,
+            .summary-card,
+            .summary-grid > div,
+            .report-panel,
+            .pos-product-panel,
+            .pos-checkout-panel,
+            .order-item,
+            .transaction-item,
+            [class*="-panel"],
+            [class*="-card"],
+            [class*="-tile"],
+            [class*="-widget"]
+        ) {
+            border: 1px solid rgba(125, 174, 202, .24) !important;
+            border-radius: 15px !important;
+            background: rgba(255, 255, 255, .66) !important;
+            box-shadow: 0 10px 28px rgba(22, 58, 82, .07), inset 0 1px 0 rgba(255, 255, 255, .72) !important;
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+        }
+
+        .admin-main :is(
+            .panel,
+            .card,
+            .summary-card,
+            .summary-grid > div,
+            .report-panel,
+            .pos-product-panel,
+            .pos-checkout-panel,
+            .order-item,
+            .transaction-item,
+            [class*="-panel"],
+            [class*="-card"],
+            [class*="-tile"],
+            [class*="-widget"]
+        ):hover {
+            border-color: rgba(56, 189, 248, .38) !important;
+            box-shadow: 0 15px 34px rgba(22, 58, 82, .12), inset 0 1px 0 rgba(255, 255, 255, .78) !important;
+        }
+
+        .admin-main :is(.panel-header, .card-header, .card-footer, .panel-heading) {
+            border-color: rgba(125, 174, 202, .17) !important;
+            background: rgba(221, 240, 251, .38) !important;
+        }
+
+        .admin-main .table-wrap {
+            border: 1px solid rgba(125, 174, 202, .2);
+            border-radius: 13px;
+            background: rgba(255, 255, 255, .3);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, .42);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+
+        .admin-main :is(table, .table) {
+            --bs-table-bg: transparent;
+            background: transparent !important;
+        }
+
+        .admin-main :is(th, .table th, .table thead th) {
+            border-color: rgba(125, 174, 202, .2) !important;
+            background: rgba(224, 240, 249, .66) !important;
+            color: #35566d;
+        }
+
+        .admin-main :is(td, .table td) {
+            border-color: rgba(125, 174, 202, .16) !important;
+        }
+
+        .admin-main tbody tr {
+            transition: background-color .16s ease;
+        }
+
+        .admin-main tbody tr:hover > td {
+            background: rgba(56, 189, 248, .07) !important;
+        }
+
+        .admin-main :is(.notice, .alert, .staff-module-picker, fieldset) {
+            border: 1px solid rgba(125, 174, 202, .22);
+            border-radius: 12px;
+            background: rgba(255, 255, 255, .52);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, .5);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+
+        .admin-main :is(.pagination .page-link, .dropdown-menu, .modal-content, dialog) {
+            border-color: rgba(125, 174, 202, .25);
+            border-radius: 12px;
+            background: rgba(247, 252, 255, .9);
+            box-shadow: 0 16px 38px rgba(22, 58, 82, .14);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+        }
+
+        :root[data-theme="dark"] .admin-main :is(
+            .panel,
+            .card,
+            .summary-card,
+            .summary-grid > div,
+            .report-panel,
+            .pos-product-panel,
+            .pos-checkout-panel,
+            .order-item,
+            .transaction-item,
+            [class*="-panel"],
+            [class*="-card"],
+            [class*="-tile"],
+            [class*="-widget"]
+        ) {
+            border-color: rgba(125, 211, 252, .17) !important;
+            background: linear-gradient(145deg, rgba(20, 43, 62, .78), rgba(10, 25, 40, .78)) !important;
+            box-shadow: 0 12px 30px rgba(1, 7, 14, .2), inset 0 1px 0 rgba(255, 255, 255, .055) !important;
+            color: #eaf4fb;
+        }
+
+        :root[data-theme="dark"] .admin-main :is(.panel-header, .card-header, .card-footer, .panel-heading) {
+            border-color: rgba(125, 211, 252, .15) !important;
+            background: rgba(39, 72, 96, .34) !important;
+            color: #eaf4fb !important;
+        }
+
+        :root[data-theme="dark"] .admin-main .table-wrap {
+            border-color: rgba(125, 211, 252, .15);
+            background: rgba(8, 22, 36, .34);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, .04);
+        }
+
+        :root[data-theme="dark"] .admin-main :is(th, .table th, .table thead th) {
+            border-color: rgba(125, 211, 252, .15) !important;
+            background: rgba(39, 72, 96, .48) !important;
+            color: #cde7f5 !important;
+        }
+
+        :root[data-theme="dark"] .admin-main :is(td, .table td) {
+            border-color: rgba(125, 211, 252, .12) !important;
+            color: #d6e5ef;
+        }
+
+        :root[data-theme="dark"] .admin-main :is(.notice, .alert, .staff-module-picker, fieldset) {
+            border-color: rgba(125, 211, 252, .17);
+            background: rgba(15, 34, 51, .72);
+            color: #eaf4fb;
+        }
+
+        :root[data-theme="dark"] .admin-main :is(.pagination .page-link, .dropdown-menu, .modal-content, dialog) {
+            border-color: rgba(125, 211, 252, .2);
+            background: rgba(12, 29, 45, .94);
+            color: #eaf4fb;
+        }
+
+        :root[data-theme="dark"] .profile-dropdown,
+        :root[data-theme="dark"] .accent-picker-popover,
+        :root[data-theme="dark"] .notification-panel {
+            border-color: rgba(125, 211, 252, .2);
+            background: rgba(9, 25, 40, .94);
+            color: #eaf4fb;
+            box-shadow: 0 18px 44px rgba(0, 0, 0, .35);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+        }
+
+        :root[data-theme="dark"] .notification-panel-header,
+        :root[data-theme="dark"] .notification-item {
+            border-color: rgba(125, 211, 252, .13);
+            background: rgba(16, 37, 55, .72);
+            color: #eaf4fb;
+        }
+
+        :root[data-theme="dark"] .notification-item:hover {
+            background: rgba(56, 189, 248, .14);
+        }
+
+        :root[data-theme="light"] .profile-dropdown,
+        :root[data-theme="light"] .accent-picker-popover,
+        :root[data-theme="light"] .notification-panel {
+            border-color: rgba(125, 174, 202, .28);
+            background: rgba(249, 253, 255, .9);
+            box-shadow: 0 18px 44px rgba(22, 58, 82, .16);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+        }
+
+        :root[data-theme="dark"] .assistant-window {
+            border-color: rgba(125, 211, 252, .2);
+            background: rgba(9, 25, 40, .96);
+            color: #eaf4fb;
+            box-shadow: 0 18px 48px rgba(0, 0, 0, .4);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+        }
+
+        :root[data-theme="dark"] .assistant-header {
+            background: linear-gradient(110deg, rgba(11, 39, 64, .96), rgba(18, 70, 109, .94));
+        }
+
+        :root[data-theme="dark"] .assistant-messages {
+            background: rgba(8, 22, 36, .72);
+        }
+
+        :root[data-theme="dark"] .assistant-message,
+        :root[data-theme="dark"] .assistant-product {
+            border-color: rgba(125, 211, 252, .16);
+            background: rgba(17, 38, 57, .82);
+            color: #eaf4fb;
+        }
+
+        :root[data-theme="dark"] .assistant-quick-reply {
+            border-color: rgba(125, 211, 252, .24);
+            background: rgba(17, 38, 57, .82);
+            color: #bae6fd;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .admin-main :is(
+                .panel,
+                .card,
+                .summary-card,
+                .summary-grid > div,
+                .report-panel,
+                .pos-product-panel,
+                .pos-checkout-panel,
+                .order-item,
+                .transaction-item,
+                [class*="-panel"],
+                [class*="-card"],
+                [class*="-tile"],
+                [class*="-widget"]
+            ),
+            .admin-main tbody tr {
+                transition: none;
+            }
+        }
+
+        @media (hover: hover) and (prefers-reduced-motion: no-preference) {
+            .admin-main :is(button, .button, .btn, a.button, a.btn, .dashboard-action-button):hover {
+                box-shadow: 0 8px 18px rgba(2, 132, 199, .2);
+                transform: translateY(-1px);
+            }
+        }
+
+        @media (max-width: 700px) {
+            .admin-main .page-heading {
+                padding: 15px;
+            }
+        }
     </style>
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            const themeToggle = document.getElementById('themeToggle');
-            const themeIcon = themeToggle?.querySelector('.theme-toggle-icon');
-            const themeLabel = themeToggle?.querySelector('.theme-toggle-label');
-
-            function updateThemeToggle() {
-                const isDark = document.documentElement.dataset.theme === 'dark';
-
-                if (!themeToggle || !themeIcon || !themeLabel) {
-                    return;
-                }
-
-                themeToggle.setAttribute('aria-pressed', String(isDark));
-                themeToggle.setAttribute(
+            const sidebarToggle = document.getElementById('sidebarToggle');
+            const sidebarStorageKey = 'admin-sidebar-collapsed-{{ auth()->id() }}';
+            const setSidebarCollapsed = function (collapsed) {
+                document.body.classList.toggle('sidebar-collapsed', collapsed);
+                sidebarToggle.setAttribute('aria-expanded', String(!collapsed));
+                sidebarToggle.setAttribute(
                     'aria-label',
-                    isDark ? 'Switch to light mode' : 'Switch to dark mode'
+                    collapsed ? 'Expand navigation' : 'Collapse navigation'
                 );
-                themeIcon.textContent = isDark ? '☀' : '☾';
-                themeLabel.textContent = isDark ? 'Light mode' : 'Dark mode';
+            };
+
+            setSidebarCollapsed(localStorage.getItem(sidebarStorageKey) === 'true');
+            sidebarToggle.addEventListener('click', function () {
+                const collapsed = !document.body.classList.contains('sidebar-collapsed');
+                setSidebarCollapsed(collapsed);
+                localStorage.setItem(sidebarStorageKey, String(collapsed));
+            });
+
+            const accentToggle = document.getElementById('accentPickerToggle');
+            const accentPanel = document.getElementById('accentPickerPanel');
+            const accentSwatches = document.querySelectorAll('.accent-swatch');
+            const themeModeIcon = document.getElementById('themeModeIcon');
+            const themeModeLabel = document.getElementById('themeModeLabel');
+            const themeModeButtons = document.querySelectorAll('.theme-mode-option');
+
+            function updateAccentPicker() {
+                const selectedAccent = document.documentElement.dataset.accent || 'blue';
+
+                accentSwatches.forEach((swatch) => {
+                    swatch.setAttribute(
+                        'aria-pressed',
+                        String(swatch.dataset.accent === selectedAccent)
+                    );
+                });
             }
 
-            updateThemeToggle();
-            themeToggle?.addEventListener('click', function () {
-                const nextTheme = document.documentElement.dataset.theme === 'dark'
-                    ? 'light'
-                    : 'dark';
+            updateAccentPicker();
+            accentToggle?.addEventListener('click', function (event) {
+                event.stopPropagation();
+                const willOpen = accentPanel.hidden;
+                accentPanel.hidden = !willOpen;
+                accentToggle.setAttribute('aria-expanded', String(willOpen));
+            });
 
-                document.documentElement.dataset.theme = nextTheme;
-                localStorage.setItem(adminThemeKey, nextTheme);
-                updateThemeToggle();
-                document.dispatchEvent(new CustomEvent('admin-theme-change', {
-                    detail: { theme: nextTheme },
-                }));
+            accentSwatches.forEach((swatch) => {
+                swatch.addEventListener('click', function () {
+                    const selectedAccent = swatch.dataset.accent;
+                    applyAdminAccent(selectedAccent);
+                    localStorage.setItem(adminAccentKey, selectedAccent);
+                    updateAccentPicker();
+                    accentPanel.hidden = true;
+                    accentToggle.setAttribute('aria-expanded', 'false');
+                });
+            });
+
+            function updateThemeMode() {
+                const currentTheme = document.documentElement.dataset.theme === 'dark'
+                    ? 'dark'
+                    : 'light';
+
+                if (themeModeIcon) themeModeIcon.textContent = currentTheme === 'dark' ? '☾' : '☀';
+                if (themeModeLabel) themeModeLabel.textContent = currentTheme === 'dark' ? 'Dark mode' : 'Light mode';
+                themeModeButtons.forEach((button) => {
+                    button.setAttribute('aria-pressed', String(button.dataset.themeChoice === currentTheme));
+                });
+            }
+
+            updateThemeMode();
+            themeModeButtons.forEach((button) => {
+                button.addEventListener('click', function () {
+                    const nextTheme = button.dataset.themeChoice;
+                    document.documentElement.dataset.theme = nextTheme;
+                    localStorage.setItem(adminThemeKey, nextTheme);
+                    applyAdminAccent(document.documentElement.dataset.accent);
+                    updateThemeMode();
+                    document.dispatchEvent(new CustomEvent('admin-theme-change', {
+                        detail: { theme: nextTheme },
+                    }));
+                });
+            });
+
+            document.addEventListener('click', function (event) {
+                if (!accentPanel?.contains(event.target) && !accentToggle?.contains(event.target)) {
+                    if (accentPanel) accentPanel.hidden = true;
+                    accentToggle?.setAttribute('aria-expanded', 'false');
+                }
+            });
+
+            document.addEventListener('keydown', function (event) {
+                if (event.key === 'Escape' && accentPanel && !accentPanel.hidden) {
+                    accentPanel.hidden = true;
+                    accentToggle?.setAttribute('aria-expanded', 'false');
+                    accentToggle?.focus();
+                }
             });
 
             const trigger = document.getElementById('profileTrigger');
             const dropdown = document.getElementById('profileDropdown');
+
+            document.querySelectorAll('.profile-avatar img, .profile-dropdown-avatar img').forEach((image) => {
+                image.addEventListener('error', () => {
+                    const avatar = image.parentElement;
+                    image.remove();
+                    avatar.textContent = avatar.dataset.initials || 'A';
+                }, { once: true });
+            });
 
             if (!trigger || !dropdown) {
                 return;

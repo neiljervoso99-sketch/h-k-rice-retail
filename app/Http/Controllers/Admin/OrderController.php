@@ -10,8 +10,8 @@ use App\Models\Payment;
 use App\Models\Product;
 use App\Models\ProductSellingUnit;
 use App\Models\User;
-use App\Support\OrderEmailNotifier;
 use App\Support\LowStockAlertNotifier;
+use App\Support\OrderEmailNotifier;
 use App\Support\UserAlertNotifier;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -80,7 +80,7 @@ class OrderController extends Controller
 
                 if (
                     strtolower((string) $lockedOrder->payment_status) !== 'paid'
-                    || !$verifiedPayment
+                    || ! $verifiedPayment
                 ) {
                     throw ValidationException::withMessages([
                         'order' => 'This GCash payment must be verified before the order can be approved.',
@@ -113,7 +113,7 @@ class OrderController extends Controller
 
                 $product = Product::whereKey($item->product_id)->first();
 
-                if (!$product) {
+                if (! $product) {
                     throw ValidationException::withMessages([
                         'order' => "Product {$item->product_name} no longer exists.",
                     ]);
@@ -141,7 +141,7 @@ class OrderController extends Controller
                         ->whereRaw('LOWER(unit_name) = ?', [$unit])
                         ->first();
 
-                    if (!$sellingUnit) {
+                    if (! $sellingUnit) {
                         throw ValidationException::withMessages([
                             'order' => "The selling unit '{$unit}' for {$product->name} could not be found. Please check the product's selling units.",
                         ]);
@@ -149,7 +149,7 @@ class OrderController extends Controller
 
                     $factor = (float) $sellingUnit->conversion_factor;
 
-                    if (!is_finite($factor) || $factor <= 0) {
+                    if (! is_finite($factor) || $factor <= 0) {
                         throw ValidationException::withMessages([
                             'order' => "The stock conversion for {$product->name} is invalid.",
                         ]);
@@ -157,7 +157,7 @@ class OrderController extends Controller
 
                     $baseQuantity = round($quantity * $factor, 3);
 
-                    if (!is_finite($baseQuantity) || $baseQuantity <= 0) {
+                    if (! is_finite($baseQuantity) || $baseQuantity <= 0) {
                         throw ValidationException::withMessages([
                             'order' => "Invalid converted stock quantity for {$product->name}.",
                         ]);
@@ -167,29 +167,27 @@ class OrderController extends Controller
                         $product->base_unit ?: $product->stock_unit ?: 'piece'
                     )));
 
-                    // Deduct inventory using the product's base unit.
-                    $updated = Product::whereKey($product->id)
-                        ->where('stock_base_quantity', '>=', $baseQuantity)
-                        ->decrement('stock_base_quantity', $baseQuantity);
+                    // Deduct inventory using the product's base unit and keep the
+                    // legacy quantity field synchronized for compatibility with the
+                    // generic-product inventory model.
+                    $lockedProduct = Product::whereKey($product->id)
+                        ->lockForUpdate()
+                        ->firstOrFail();
 
-                    if ($updated !== 1) {
-                        $availableStock = (float) $product->fresh()->stock_base_quantity;
+                    if ((float) $lockedProduct->stock_base_quantity < $baseQuantity) {
+                        $availableStock = (float) $lockedProduct->stock_base_quantity;
 
                         throw ValidationException::withMessages([
                             'order' => "Insufficient stock for {$product->name}. Available stock: {$availableStock} {$baseUnit}.",
                         ]);
                     }
 
-                    // Keep the legacy stock quantity synchronized for compatibility
-                    // with the current generic-product setup, where stock_unit is
-                    // the base unit and unit_conversion_factor is 1.
-                    if (
-                        strtolower(trim((string) $product->stock_unit)) === $baseUnit
-                        && (float) $product->unit_conversion_factor === 1.0
-                    ) {
-                        Product::whereKey($product->id)
-                            ->decrement('stock_quantity', $baseQuantity);
-                    }
+                    $lockedProduct->stock_base_quantity = round(
+                        (float) $lockedProduct->stock_base_quantity - $baseQuantity,
+                        3
+                    );
+                    $this->syncLegacyGenericStock($lockedProduct);
+                    $lockedProduct->save();
 
                     // Record the cost for the selling unit used in this order.
                     $item->unit_cost = $sellingUnit->cost_price;
@@ -201,11 +199,11 @@ class OrderController extends Controller
                         'movement_type' => 'sale',
                         'quantity' => -$baseQuantity,
                         'unit' => $baseUnit,
-                        'quantity_kg' => null,
+                        'quantity_kg' => 0,
                         'sacks' => 0,
                         'movement_date' => now()->toDateString(),
-                        'notes' => 'Customer order ' . $lockedOrder->order_number
-                            . ' (' . $quantity . ' ' . $unit . ')',
+                        'notes' => 'Customer order '.$lockedOrder->order_number
+                            .' ('.$quantity.' '.$unit.')',
                         'created_by' => $request->user()->id,
                     ]);
 
@@ -261,7 +259,7 @@ class OrderController extends Controller
                         ? round((float) $item->quantity, 2)
                         : 0,
                     'movement_date' => now()->toDateString(),
-                    'notes' => 'Customer order ' . $lockedOrder->order_number,
+                    'notes' => 'Customer order '.$lockedOrder->order_number,
                     'created_by' => $request->user()->id,
                 ]);
             }
@@ -293,8 +291,8 @@ class OrderController extends Controller
         if ($order->customer) {
             UserAlertNotifier::send(
                 $order->customer,
-                'Order accepted',
-                'Your order ' . $order->order_number . ' has been accepted.',
+                'Order approved',
+                'Your order '.$order->order_number.' has been approved. The store is preparing it.',
                 route('customer.orders.show', $order),
             );
         }
@@ -303,8 +301,29 @@ class OrderController extends Controller
             ->route('admin.orders.index')
             ->with(
                 'success',
-                'Order ' . $order->order_number . ' accepted. Inventory has been updated.'
+                'Order '.$order->order_number.' accepted. Inventory has been updated.'
             );
+    }
+
+    private function syncLegacyGenericStock(Product $product): void
+    {
+        $baseUnit = strtolower(trim(
+            (string) ($product->base_unit ?: $product->stock_unit ?: 'piece')
+        ));
+        $stockUnit = strtolower(trim((string) $product->stock_unit));
+        $factor = (float) $product->unit_conversion_factor;
+
+        if ($baseUnit === $stockUnit && abs($factor - 1.0) < 0.000001) {
+            $product->stock_quantity = round(
+                (float) $product->stock_base_quantity,
+                3
+            );
+        } elseif (is_finite($factor) && $factor > 0) {
+            $product->stock_quantity = round(
+                (float) $product->stock_base_quantity / $factor,
+                3
+            );
+        }
     }
 
     public function cancel(Order $order)
@@ -341,14 +360,14 @@ class OrderController extends Controller
             UserAlertNotifier::send(
                 $order->customer,
                 'Order cancelled',
-                'Your order ' . $order->order_number . ' has been cancelled.',
+                'Your order '.$order->order_number.' has been cancelled.',
                 route('customer.orders.show', $order),
             );
         }
 
         return redirect()
             ->route('admin.orders.index')
-            ->with('success', 'Order ' . $order->order_number . ' cancelled.');
+            ->with('success', 'Order '.$order->order_number.' cancelled.');
     }
 
     public function complete(Order $order)
@@ -386,14 +405,14 @@ class OrderController extends Controller
             UserAlertNotifier::send(
                 $order->customer,
                 'Order completed',
-                'Your order ' . $order->order_number . ' has been completed.',
+                'Your order '.$order->order_number.' has been completed.',
                 route('customer.orders.show', $order),
             );
         }
 
         return redirect()
             ->route('admin.orders.index')
-            ->with('success', 'Order ' . $order->order_number . ' marked as completed.');
+            ->with('success', 'Order '.$order->order_number.' marked as completed.');
     }
 
     public function assignRider(Order $order, Request $request)
@@ -406,7 +425,7 @@ class OrderController extends Controller
             ->where('role', 'rider')
             ->first();
 
-        if (!$rider) {
+        if (! $rider) {
             throw ValidationException::withMessages([
                 'rider_id' => 'Please select a valid rider account.',
             ]);
@@ -447,14 +466,14 @@ class OrderController extends Controller
             UserAlertNotifier::send(
                 $order->customer,
                 'Rider assigned',
-                $rider->name . ' has been assigned to order ' . $order->order_number . '.',
+                $rider->name.' has been assigned to order '.$order->order_number.'.',
                 route('customer.orders.show', $order),
             );
         }
         UserAlertNotifier::send(
             $rider,
             'New delivery assignment',
-            'Order ' . $order->order_number . ' has been assigned to you.',
+            'Order '.$order->order_number.' has been assigned to you.',
             route('rider.orders.show', $order),
         );
 
@@ -540,9 +559,9 @@ class OrderController extends Controller
             }
 
             if (
-                !filled($lockedPayment->reference_number)
-                || !filled($lockedPayment->proof_path)
-                || !Storage::disk('local')->exists($lockedPayment->proof_path)
+                ! filled($lockedPayment->reference_number)
+                || ! filled($lockedPayment->proof_path)
+                || ! Storage::disk('local')->exists($lockedPayment->proof_path)
             ) {
                 throw ValidationException::withMessages([
                     'payment' => 'A valid GCash reference number and payment proof are required.',
@@ -563,7 +582,7 @@ class OrderController extends Controller
             UserAlertNotifier::send(
                 $order->customer,
                 'Payment verified',
-                'The GCash payment for order ' . $order->order_number . ' was verified.',
+                'The GCash payment for order '.$order->order_number.' was verified.',
                 route('customer.orders.show', $order),
             );
         }
@@ -621,7 +640,7 @@ class OrderController extends Controller
             UserAlertNotifier::send(
                 $order->customer,
                 'Payment needs attention',
-                'The GCash payment for order ' . $order->order_number . ' was rejected.',
+                'The GCash payment for order '.$order->order_number.' was rejected.',
                 route('customer.orders.show', $order),
             );
         }

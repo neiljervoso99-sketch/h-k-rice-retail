@@ -83,6 +83,13 @@
             padding: 13px 15px;
             border-bottom: 1px solid #e8eee8;
             background: #fff;
+            cursor: grab;
+            touch-action: none;
+            user-select: none;
+        }
+
+        .notification-panel.is-dragging .notification-panel-header {
+            cursor: grabbing;
         }
 
         .notification-mark-all {
@@ -126,6 +133,7 @@
             color: #59685d;
             font-size: 12px;
             line-height: 1.4;
+            overflow-wrap: anywhere;
         }
 
         .notification-item time {
@@ -175,7 +183,10 @@
 
         @media (max-width: 560px) {
             .notification-panel {
-                right: -50px;
+                right: auto;
+                left: 50%;
+                width: min(360px, calc(100vw - 24px));
+                transform: translateX(-50%);
             }
 
             .notification-floating {

@@ -210,7 +210,7 @@
                                 <td>{{ $item->brand ?: 'N/A' }}</td>
                                 <td>
                                     {{ number_format((float) $item->quantity, 2) }}
-                                    {{ $item->unit_type === 'sack' ? 'sack(s)' : 'kg' }}
+                                    {{ $item->quantity_unit ?: $item->unit_type }}
 
                                     @if ($item->quantity_kg)
                                         <small>

@@ -90,4 +90,52 @@ class BundlePacksTest extends TestCase
 
         $this->assertSame([], session('cart', []));
     }
+
+    public function test_bundle_can_include_one_kilogram_of_rice_and_one_generic_unit(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'is_admin' => true]);
+        $customer = User::factory()->create(['role' => 'customer']);
+        $rice = Product::query()->create([
+            'name' => 'Jasmine Rice',
+            'inventory_type' => 'rice',
+            'stock_kg' => 10,
+            'price_per_kg' => 60,
+            'price_confirmed' => true,
+            'is_active' => true,
+        ]);
+        $egg = Product::query()->create([
+            'name' => 'Egg',
+            'inventory_type' => 'generic',
+            'stock_unit' => 'piece',
+            'base_unit' => 'piece',
+            'stock_base_quantity' => 10,
+            'price_confirmed' => true,
+            'is_active' => true,
+        ]);
+        ProductSellingUnit::query()->create([
+            'product_id' => $egg->id,
+            'unit_name' => 'piece',
+            'conversion_factor' => 1,
+            'selling_price' => 8,
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($admin)
+            ->post(route('admin.bundles.store'), [
+                'name' => 'Small essentials',
+                'items' => [
+                    ['product_id' => $rice->id, 'unit' => 'kg', 'quantity' => 1],
+                    ['product_id' => $egg->id, 'unit' => 'piece', 'quantity' => 1],
+                ],
+            ])
+            ->assertRedirect(route('admin.bundles.index'));
+
+        $bundle = ProductBundle::query()->firstOrFail();
+        $this->actingAs($customer)
+            ->post(route('bundles.add-to-cart', $bundle))
+            ->assertRedirect(route('cart.index'));
+
+        $this->assertSame(1.0, (float) session('cart')[$rice->id]['quantity']);
+        $this->assertSame(1.0, (float) session('cart')[$egg->id]['quantity']);
+    }
 }

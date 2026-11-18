@@ -214,21 +214,51 @@
 
                     <h3>Take a Picture</h3>
 
-                    <label for="proof-camera">Open your camera</label>
-
                     <input
                         id="proof-camera"
                         type="file"
                         name="proof"
-                        accept="image/*"
-                        capture="environment"
+                        accept="image/jpeg,image/png,image/webp"
                         required
+                        hidden
                     >
 
-                    <p class="muted">On supported phones, this opens the rear camera.</p>
+                    <p class="muted">
+                        Open your camera, take a delivery photo, and it will upload automatically.
+                    </p>
 
-                    <button class="btn" type="submit">Upload Camera Photo</button>
+                    <button
+                        class="btn"
+                        type="button"
+                        data-open-camera
+                        aria-haspopup="dialog"
+                    >
+                        Take a Picture
+                    </button>
                 </form>
+            </div>
+
+            <div
+                class="camera-dialog"
+                data-camera-dialog
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="camera-dialog-title"
+                hidden
+            >
+                <div class="camera-dialog-card">
+                    <h2 id="camera-dialog-title">Take a Picture</h2>
+                    <video data-camera-preview autoplay playsinline muted></video>
+                    <p class="muted" data-camera-message role="status"></p>
+                    <div class="camera-actions">
+                        <button class="btn" type="button" data-capture-photo>
+                            Take Photo
+                        </button>
+                        <button class="btn secondary" type="button" data-close-camera>
+                            Cancel
+                        </button>
+                    </div>
+                </div>
             </div>
 
             <form
@@ -447,6 +477,54 @@
     margin-bottom: 12px;
 }
 
+.upload-card input[hidden] {
+    display: none;
+}
+
+.camera-dialog {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: grid;
+    place-items: center;
+    padding: 20px;
+    background: rgba(0, 0, 0, .72);
+}
+
+.camera-dialog[hidden] {
+    display: none;
+}
+
+.camera-dialog-card {
+    width: min(100%, 560px);
+    padding: 20px;
+    border-radius: 12px;
+    background: white;
+}
+
+.camera-dialog-card h2 {
+    margin: 0 0 14px;
+}
+
+.camera-dialog-card video {
+    display: block;
+    width: 100%;
+    max-height: 65vh;
+    border-radius: 8px;
+    background: #101510;
+    object-fit: cover;
+}
+
+.camera-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.camera-actions .btn {
+    min-height: 44px;
+}
+
 .btn {
     display: inline-block;
     border: 0;
@@ -532,4 +610,158 @@
     }
 }
 </style>
+
+@push('scripts')
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const cameraButton = document.querySelector('[data-open-camera]');
+            const cameraInput = document.getElementById('proof-camera');
+            const cameraDialog = document.querySelector('[data-camera-dialog]');
+            const cameraPreview = document.querySelector('[data-camera-preview]');
+            const cameraMessage = document.querySelector('[data-camera-message]');
+            const captureButton = document.querySelector('[data-capture-photo]');
+            const closeButton = document.querySelector('[data-close-camera]');
+
+            if (
+                !cameraButton ||
+                !cameraInput ||
+                !cameraDialog ||
+                !cameraPreview ||
+                !cameraMessage ||
+                !captureButton ||
+                !closeButton
+            ) {
+                return;
+            }
+
+            let cameraStream = null;
+            let cameraRequest = 0;
+
+            function stopCamera() {
+                cameraRequest++;
+
+                if (cameraStream) {
+                    cameraStream.getTracks().forEach(function (track) {
+                        track.stop();
+                    });
+                    cameraStream = null;
+                }
+
+                cameraPreview.srcObject = null;
+                cameraDialog.hidden = true;
+            }
+
+            cameraButton.addEventListener('click', async function () {
+                const requestId = ++cameraRequest;
+                cameraMessage.textContent = '';
+                cameraDialog.hidden = false;
+
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    cameraMessage.textContent =
+                        'Camera access is unavailable. Use Upload Existing Photo instead, or open this page over HTTPS.';
+                    return;
+                }
+
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({
+                        audio: false,
+                        video: { facingMode: { ideal: 'environment' } }
+                    });
+
+                    if (requestId !== cameraRequest) {
+                        stream.getTracks().forEach(function (track) {
+                            track.stop();
+                        });
+                        return;
+                    }
+
+                    cameraStream = stream;
+                    cameraPreview.srcObject = cameraStream;
+                    await cameraPreview.play();
+                } catch (error) {
+                    if (requestId !== cameraRequest) return;
+
+                    if (cameraStream) {
+                        cameraStream.getTracks().forEach(function (track) {
+                            track.stop();
+                        });
+                        cameraStream = null;
+                    }
+
+                    cameraPreview.srcObject = null;
+                    cameraMessage.textContent = error.name === 'NotAllowedError'
+                        ? 'Camera permission was denied. Allow camera access in your browser settings and try again.'
+                        : 'The camera could not be opened. Check that your device has a camera and try again.';
+                }
+            });
+
+            captureButton.addEventListener('click', function () {
+                if (!cameraPreview.videoWidth || !cameraPreview.videoHeight) {
+                    cameraMessage.textContent = 'The camera is not ready yet. Please wait and try again.';
+                    return;
+                }
+
+                const canvas = document.createElement('canvas');
+                const scale = Math.min(1, 1600 / Math.max(
+                    cameraPreview.videoWidth,
+                    cameraPreview.videoHeight
+                ));
+                canvas.width = Math.round(cameraPreview.videoWidth * scale);
+                canvas.height = Math.round(cameraPreview.videoHeight * scale);
+                const context = canvas.getContext('2d');
+
+                if (!context) {
+                    cameraMessage.textContent = 'The photo could not be captured. Please try again.';
+                    return;
+                }
+
+                context.drawImage(
+                    cameraPreview,
+                    0,
+                    0,
+                    canvas.width,
+                    canvas.height
+                );
+
+                canvas.toBlob(function (blob) {
+                    if (!blob) {
+                        cameraMessage.textContent = 'The photo could not be captured. Please try again.';
+                        return;
+                    }
+
+                    const transfer = new DataTransfer();
+                    transfer.items.add(new File(
+                        [blob],
+                        'delivery-proof-' + Date.now() + '.jpg',
+                        { type: 'image/jpeg' }
+                    ));
+                    cameraInput.files = transfer.files;
+
+                    const form = cameraInput.form;
+                    stopCamera();
+
+                    if (form && typeof form.requestSubmit === 'function') {
+                        form.requestSubmit();
+                    } else if (form) {
+                        form.submit();
+                    }
+                }, 'image/jpeg', 0.9);
+            });
+
+            closeButton.addEventListener('click', stopCamera);
+
+            cameraDialog.addEventListener('click', function (event) {
+                if (event.target === cameraDialog) {
+                    stopCamera();
+                }
+            });
+
+            document.addEventListener('keydown', function (event) {
+                if (event.key === 'Escape' && !cameraDialog.hidden) {
+                    stopCamera();
+                }
+            });
+        });
+    </script>
+@endpush
 @endsection

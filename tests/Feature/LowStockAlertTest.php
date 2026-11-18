@@ -44,5 +44,6 @@ class LowStockAlertTest extends TestCase
         $product->save();
         LowStockAlertNotifier::check($product->fresh());
         $this->assertSame(3, $admin->notifications()->count());
+        Event::assertDispatchedTimes(UserAlertCreated::class, 3);
     }
 }

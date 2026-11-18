@@ -532,7 +532,7 @@
 
                             {{ number_format((float) $item['quantity'], 2) }}
                             {{ $isGenericItem
-                                ? ($item['product']->stock_unit ?? $item['unit'])
+                                ? $item['unit']
                                 : ($item['unit'] === 'kg' ? 'kg' : 'sack') }}
 
                             @if (

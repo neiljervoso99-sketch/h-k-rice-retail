@@ -42,7 +42,7 @@
                         </div>
                         <div class="field">
                             <label for="bundle-quantity-{{ $slot }}">Quantity</label>
-                            <input id="bundle-quantity-{{ $slot }}" name="items[{{ $slot }}][quantity]" type="number" min="0.01" max="1000" step="0.01" value="5" required>
+                            <input id="bundle-quantity-{{ $slot }}" name="items[{{ $slot }}][quantity]" type="number" min="0.01" max="1000" step="0.01" value="1" required>
                         </div>
                     </div>
                 </fieldset>

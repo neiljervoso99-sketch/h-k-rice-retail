@@ -23,7 +23,7 @@ class InventoryController extends Controller
             ->get();
 
         $lowStockProducts = $products->filter(function ($product) {
-            if (!$product->is_active) {
+            if (! $product->is_active) {
                 return false;
             }
 
@@ -43,8 +43,7 @@ class InventoryController extends Controller
             ->whereDate('movement_date', '<=', now()->toDateString())
             ->get(['product_id', 'quantity', 'quantity_kg'])
             ->groupBy('product_id')
-            ->map(fn ($movements) => $movements->sum(fn ($movement) =>
-                abs((float) ($movement->quantity ?? $movement->quantity_kg ?? 0))
+            ->map(fn ($movements) => $movements->sum(fn ($movement) => abs((float) ($movement->quantity ?? $movement->quantity_kg ?? 0))
             ));
 
         $stockForecasts = $products
@@ -107,7 +106,7 @@ class InventoryController extends Controller
     {
         $filters = $this->validateFilters($request);
 
-        $filename = 'inventory-movements-' . now()->format('Y-m-d-His') . '.csv';
+        $filename = 'inventory-movements-'.now()->format('Y-m-d-His').'.csv';
 
         return response()->streamDownload(function () use ($filters) {
             $output = fopen('php://output', 'w');
@@ -185,7 +184,7 @@ class InventoryController extends Controller
     {
         return InventoryMovement::query()
             ->when(
-                !empty($filters['date_from']),
+                ! empty($filters['date_from']),
                 fn ($query) => $query->whereDate(
                     'movement_date',
                     '>=',
@@ -193,7 +192,7 @@ class InventoryController extends Controller
                 )
             )
             ->when(
-                !empty($filters['date_to']),
+                ! empty($filters['date_to']),
                 fn ($query) => $query->whereDate(
                     'movement_date',
                     '<=',
@@ -201,14 +200,14 @@ class InventoryController extends Controller
                 )
             )
             ->when(
-                !empty($filters['product_id']),
+                ! empty($filters['product_id']),
                 fn ($query) => $query->where(
                     'product_id',
                     $filters['product_id']
                 )
             )
             ->when(
-                !empty($filters['movement_type'])
+                ! empty($filters['movement_type'])
                     && $filters['movement_type'] !== 'all',
                 fn ($query) => $query->where(
                     'movement_type',
@@ -300,7 +299,7 @@ class InventoryController extends Controller
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            if (!$product->is_active) {
+            if (! $product->is_active) {
                 throw ValidationException::withMessages([
                     'product_id' => 'Cannot add stock to an inactive product.',
                 ]);
@@ -321,7 +320,7 @@ class InventoryController extends Controller
                     ]);
                 }
 
-                if (!$product->sack_weight_kg || $product->sack_weight_kg < 1) {
+                if (! $product->sack_weight_kg || $product->sack_weight_kg < 1) {
                     throw ValidationException::withMessages([
                         'product_id' => 'Set a valid sack weight for this rice product first.',
                     ]);
@@ -362,7 +361,7 @@ class InventoryController extends Controller
                     ->where('is_active', true)
                     ->first();
 
-                if (!$sellingUnit) {
+                if (! $sellingUnit) {
                     throw ValidationException::withMessages([
                         'unit' => 'Select an active selling unit configured for this product.',
                     ]);
@@ -372,13 +371,13 @@ class InventoryController extends Controller
                 $factor = (float) $sellingUnit->conversion_factor;
                 $currentStock = (float) $product->stock_base_quantity;
 
-                if (!is_finite($factor) || $factor <= 0) {
+                if (! is_finite($factor) || $factor <= 0) {
                     throw ValidationException::withMessages([
                         'unit' => 'The selling-unit conversion factor is invalid.',
                     ]);
                 }
 
-                if (!is_finite($currentStock) || $currentStock < 0) {
+                if (! is_finite($currentStock) || $currentStock < 0) {
                     throw ValidationException::withMessages([
                         'quantity' => 'The current base stock is invalid.',
                     ]);
@@ -386,7 +385,7 @@ class InventoryController extends Controller
 
                 $baseQuantity = round($quantity * $factor, 3);
 
-                if (!is_finite($baseQuantity) || $baseQuantity <= 0) {
+                if (! is_finite($baseQuantity) || $baseQuantity <= 0) {
                     throw ValidationException::withMessages([
                         'quantity' => 'The converted stock quantity is invalid.',
                     ]);
@@ -406,7 +405,7 @@ class InventoryController extends Controller
                 $this->syncLegacyGenericStock($product);
 
                 $movementData = [
-                    'quantity_kg' => null,
+                    'quantity_kg' => 0,
                     'sacks' => 0,
                     'quantity' => $baseQuantity,
                     'unit' => strtolower(trim(
@@ -417,16 +416,16 @@ class InventoryController extends Controller
 
             $details = [];
 
-            if (!empty($validated['supplier'])) {
-                $details[] = 'Supplier: ' . $validated['supplier'];
+            if (! empty($validated['supplier'])) {
+                $details[] = 'Supplier: '.$validated['supplier'];
             }
 
-            if (!empty($validated['batch_reference'])) {
-                $details[] = 'Batch Reference: ' . $validated['batch_reference'];
+            if (! empty($validated['batch_reference'])) {
+                $details[] = 'Batch Reference: '.$validated['batch_reference'];
             }
 
-            if (!empty($validated['notes'])) {
-                $details[] = 'Notes: ' . $validated['notes'];
+            if (! empty($validated['notes'])) {
+                $details[] = 'Notes: '.$validated['notes'];
             }
 
             $movementData += [
@@ -436,7 +435,7 @@ class InventoryController extends Controller
                 'movement_date' => $validated['movement_date'],
                 'notes' => implode("\n", $details) ?: null,
                 'created_by' => $request->user()->id,
-                'delivery_reference' => !empty($validated['delivery_reference'])
+                'delivery_reference' => ! empty($validated['delivery_reference'])
                     ? trim($validated['delivery_reference'])
                     : null,
             ];
@@ -542,7 +541,7 @@ class InventoryController extends Controller
                 $currentStock = (float) $product->{$stockColumn};
                 $movementQuantity = $totalQuantity;
                 $movementUnit = 'kg';
-                $quantityKgMovement = null;
+                $quantityKgMovement = 0;
             } else {
                 if ($extraKg > 0) {
                     throw ValidationException::withMessages([
@@ -556,7 +555,7 @@ class InventoryController extends Controller
                     ->where('is_active', true)
                     ->first();
 
-                if (!$sellingUnit) {
+                if (! $sellingUnit) {
                     throw ValidationException::withMessages([
                         'unit' => 'Select an active selling unit configured for this product.',
                     ]);
@@ -565,13 +564,13 @@ class InventoryController extends Controller
                 $factor = (float) $sellingUnit->conversion_factor;
                 $currentStock = (float) $product->stock_base_quantity;
 
-                if (!is_finite($factor) || $factor <= 0) {
+                if (! is_finite($factor) || $factor <= 0) {
                     throw ValidationException::withMessages([
                         'unit' => 'The selling-unit conversion factor is invalid.',
                     ]);
                 }
 
-                if (!is_finite($currentStock) || $currentStock < 0) {
+                if (! is_finite($currentStock) || $currentStock < 0) {
                     throw ValidationException::withMessages([
                         'quantity' => 'The current base stock is invalid.',
                     ]);
@@ -579,7 +578,7 @@ class InventoryController extends Controller
 
                 $movementQuantity = round($quantity * $factor, 3);
 
-                if (!is_finite($movementQuantity) || $movementQuantity <= 0) {
+                if (! is_finite($movementQuantity) || $movementQuantity <= 0) {
                     throw ValidationException::withMessages([
                         'quantity' => 'The converted stock quantity is invalid.',
                     ]);
@@ -588,7 +587,7 @@ class InventoryController extends Controller
                 $movementUnit = strtolower(trim(
                     (string) ($product->base_unit ?: $product->stock_unit ?: 'piece')
                 ));
-                $quantityKgMovement = null;
+                $quantityKgMovement = 0;
             }
 
             if ($validated['adjustment_type'] === 'adjustment_out') {
@@ -628,18 +627,18 @@ class InventoryController extends Controller
                 'other' => 'Other',
             ];
 
-            $notes = 'Reason: ' . $reasonLabels[$validated['reason']];
+            $notes = 'Reason: '.$reasonLabels[$validated['reason']];
 
-            if (!empty($validated['notes'])) {
-                $notes .= "\nNotes: " . $validated['notes'];
+            if (! empty($validated['notes'])) {
+                $notes .= "\nNotes: ".$validated['notes'];
             }
 
             if ($isRice && $extraKg > 0) {
                 $notes .= "\nQuantity breakdown: "
-                    . number_format($quantity, 2)
-                    . ' kg + '
-                    . number_format($extraKg, 2)
-                    . ' additional kg';
+                    .number_format($quantity, 2)
+                    .' kg + '
+                    .number_format($extraKg, 2)
+                    .' additional kg';
             }
 
             $sacks = 0;
@@ -715,7 +714,7 @@ class InventoryController extends Controller
             ->where('is_active', true)
             ->first();
 
-        if (!$product) {
+        if (! $product) {
             return response()->json([
                 'message' => 'No active product matches this QR code.',
             ], 404);
