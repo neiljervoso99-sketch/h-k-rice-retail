@@ -54,7 +54,7 @@ class DashboardTest extends TestCase
             ->assertSee('dashboard-rise-in', false)
             ->assertSee('dashboard-card-float', false)
             ->assertSee('--dashboard-tilt-x', false)
-            ->assertSee('const defaultAdminTheme = "light";', false)
+            ->assertSee("const defaultAdminTheme = 'light';", false)
             ->assertSee('rgba(235, 247, 253, .78)', false)
             ->assertSee('animation: { duration: reduceMotion ? 0 : 650', false)
             ->assertSee('@media (prefers-reduced-motion: reduce)', false)
@@ -63,6 +63,23 @@ class DashboardTest extends TestCase
             ->assertSee('data-theme-choice="light"', false)
             ->assertSee('themeModeLabel')
             ->assertSee('data-theme="dark"', false);
+    }
+
+    public function test_shared_glass_layout_enhances_non_dashboard_admin_modules(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'is_admin' => true,
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.products.index'))
+            ->assertOk()
+            ->assertSee('admin-glass-interface', false)
+            ->assertSee('admin-page-enter', false)
+            ->assertSee('admin-ambient-drift', false)
+            ->assertSee('[class*="-panel"]', false)
+            ->assertSee('backdrop-filter: blur(16px)', false);
     }
 
     public function test_dashboard_period_filter_uses_completed_order_data(): void

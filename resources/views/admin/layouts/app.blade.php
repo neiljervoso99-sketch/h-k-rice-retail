@@ -20,7 +20,7 @@
         };
         const savedAdminTheme = localStorage.getItem(adminThemeKey);
         const root = document.documentElement;
-        const defaultAdminTheme = @json(request()->routeIs('admin.dashboard') ? 'light' : 'dark');
+        const defaultAdminTheme = 'light';
         root.dataset.theme = savedAdminTheme === 'light' || savedAdminTheme === 'dark'
             ? savedAdminTheme
             : defaultAdminTheme;
@@ -1295,7 +1295,7 @@
         }
     </style>
 </head>
-<body class="{{ request()->routeIs('admin.dashboard') ? 'admin-dashboard-page' : '' }}">
+<body class="admin-glass-interface {{ request()->routeIs('admin.dashboard') ? 'admin-dashboard-page' : '' }}">
     @php
         $adminUser = auth()->user();
         $adminName = $adminUser?->name ?? 'Administrator';
@@ -1860,7 +1860,6 @@
         .admin-main .report-panel:hover {
             border-color: rgba(56, 189, 248, .38);
             box-shadow: 0 14px 32px rgba(22, 58, 82, .11), inset 0 1px 0 rgba(255, 255, 255, .8);
-            transform: translateY(-2px);
         }
 
         .admin-main .panel h2,
@@ -2045,6 +2044,7 @@
             box-shadow: 0 10px 28px rgba(22, 58, 82, .07), inset 0 1px 0 rgba(255, 255, 255, .72) !important;
             backdrop-filter: blur(16px);
             -webkit-backdrop-filter: blur(16px);
+            transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease, background-color .18s ease;
         }
 
         .admin-main :is(
@@ -2064,6 +2064,7 @@
         ):hover {
             border-color: rgba(56, 189, 248, .38) !important;
             box-shadow: 0 15px 34px rgba(22, 58, 82, .12), inset 0 1px 0 rgba(255, 255, 255, .78) !important;
+            transform: translateY(-2px);
         }
 
         .admin-main :is(.panel-header, .card-header, .card-footer, .panel-heading) {
@@ -2209,6 +2210,68 @@
             -webkit-backdrop-filter: blur(18px);
         }
 
+        body.admin-glass-interface {
+            isolation: isolate;
+        }
+
+        body.admin-glass-interface::before,
+        body.admin-glass-interface::after {
+            position: fixed;
+            z-index: -1;
+            width: min(68vw, 820px);
+            height: min(68vw, 820px);
+            border-radius: 50%;
+            background: radial-gradient(ellipse, rgba(56, 189, 248, .11), rgba(37, 99, 235, .045) 40%, transparent 70%);
+            content: "";
+            pointer-events: none;
+            animation: admin-ambient-drift 32s ease-in-out infinite alternate;
+        }
+
+        body.admin-glass-interface::before {
+            top: -34vw;
+            left: -24vw;
+        }
+
+        body.admin-glass-interface::after {
+            right: -30vw;
+            bottom: -42vw;
+            background: radial-gradient(ellipse, rgba(125, 211, 252, .1), rgba(14, 165, 233, .04) 40%, transparent 70%);
+            animation-delay: -14s;
+            animation-duration: 38s;
+        }
+
+        @keyframes admin-ambient-drift {
+            from { transform: translate3d(-1.5%, -1%, 0) scale(.96); }
+            to { transform: translate3d(2%, 1.5%, 0) scale(1.04); }
+        }
+
+        @keyframes admin-sidebar-enter {
+            from { opacity: 0; translate: -10px 0; }
+            to { opacity: 1; translate: 0 0; }
+        }
+
+        @keyframes admin-header-enter {
+            from { opacity: 0; translate: 0 -7px; }
+            to { opacity: 1; translate: 0 0; }
+        }
+
+        @keyframes admin-page-enter {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        body.admin-glass-interface .sidebar {
+            animation: admin-sidebar-enter .4s ease-out both;
+        }
+
+        body.admin-glass-interface .admin-header {
+            animation: admin-header-enter .36s ease-out both;
+        }
+
+        body.admin-glass-interface:not(.admin-dashboard-page) .admin-main > :not(style):not(script) {
+            animation: admin-page-enter .4s ease-out backwards;
+        }
+
         :root[data-theme="dark"] .assistant-window {
             border-color: rgba(125, 211, 252, .2);
             background: rgba(9, 25, 40, .96);
@@ -2240,6 +2303,14 @@
         }
 
         @media (prefers-reduced-motion: reduce) {
+            body.admin-glass-interface::before,
+            body.admin-glass-interface::after,
+            body.admin-glass-interface .sidebar,
+            body.admin-glass-interface .admin-header,
+            body.admin-glass-interface:not(.admin-dashboard-page) .admin-main > :not(style):not(script) {
+                animation: none !important;
+            }
+
             .admin-main :is(
                 .panel,
                 .card,
@@ -2261,6 +2332,24 @@
         }
 
         @media (hover: hover) and (prefers-reduced-motion: no-preference) {
+            .admin-main :is(
+                .panel,
+                .card,
+                .summary-card,
+                .summary-grid > div,
+                .report-panel,
+                .pos-product-panel,
+                .pos-checkout-panel,
+                .order-item,
+                .transaction-item,
+                [class*="-panel"],
+                [class*="-card"],
+                [class*="-tile"],
+                [class*="-widget"]
+            ):hover {
+                transform: translateY(-2px);
+            }
+
             .admin-main :is(button, .button, .btn, a.button, a.btn, .dashboard-action-button):hover {
                 box-shadow: 0 8px 18px rgba(2, 132, 199, .2);
                 transform: translateY(-1px);
@@ -2268,6 +2357,12 @@
         }
 
         @media (max-width: 700px) {
+            body.admin-glass-interface::before,
+            body.admin-glass-interface::after {
+                animation: none;
+                opacity: .7;
+            }
+
             .admin-main .page-heading {
                 padding: 15px;
             }
